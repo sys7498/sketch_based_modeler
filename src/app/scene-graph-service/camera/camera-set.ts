@@ -1,16 +1,16 @@
 import { NotificationService, NotifyHandler } from 'src/app/notification-service/notification-service';
-import * as THREE from 'three';
+import {OrthographicCamera, PerspectiveCamera, Vector3} from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EventHandler, EventService, EventType } from 'src/app/event-service/event-service';
 export class CameraSet{
-    public camera: THREE.PerspectiveCamera;
+    public camera: OrthographicCamera;
     public orbitControls: OrbitControls;
     constructor(
         event: EventService,
         notification: NotificationService,
     ) {
-        this.camera = this.createPerspectiveCamera('camera', new THREE.Vector3(20, 20, 17));
+        this.camera = this.createOrthographicCamera('camera', new Vector3(0, 0, 5000));
         this.orbitControls = undefined as unknown as OrbitControls;
         this._viewportDiv = undefined as unknown as HTMLDivElement;
         this._notifyHandler = new NotifyHandler(notification, this.onNotify.bind(this));
@@ -28,11 +28,15 @@ export class CameraSet{
 		this.onWindowResize();
 		this.orbitControls = new OrbitControls(this.camera, css2DRenderer.domElement);
 		this.orbitControls.object = this.camera;
-        this.orbitControls.enabled = true;
+		this.orbitControls.enabled = true;
+		this.orbitControls.enableRotate = false;
     }
     
-    public onWindowResize(): void {
-        (this.camera as THREE.PerspectiveCamera).aspect = this._viewportDiv.clientWidth / this._viewportDiv.clientHeight;
+	public onWindowResize(): void {
+		(this.camera as OrthographicCamera).left = - this._viewportDiv.clientWidth * 2;
+		(this.camera as OrthographicCamera).right =  this._viewportDiv.clientWidth * 2;
+		(this.camera as OrthographicCamera).top = this._viewportDiv.clientHeight * 2;
+		(this.camera as OrthographicCamera).bottom = -this._viewportDiv.clientHeight * 2;
 		this.camera.updateProjectionMatrix();
 		this.orbitControls?.update();
     }
@@ -62,15 +66,17 @@ export class CameraSet{
 	/** 키보드 버튼을 뗄 경우 호출되는 메서드 */
 	private onKeyUp(event: KeyboardEvent): void {
 	}
-    
-    private createPerspectiveCamera(name: string, position: THREE.Vector3): THREE.PerspectiveCamera {
-		const camera = new THREE.PerspectiveCamera(
-			45, 1, 0.01, 1000);
+	
+	private createOrthographicCamera(name: string, position: Vector3): OrthographicCamera {
+		const camera = new OrthographicCamera(
+			1, 1, 1, 1, -20000, 20000);
 		camera.name = name;
 		camera.up.set(0, 0, 1);
 		camera.position.copy(position);
+		camera.zoom = 20;
+		camera.layers.enable(0);
 		return camera;
-    }
+	}
 
     private _eventHandler: EventHandler;
     private _notifyHandler: NotifyHandler;

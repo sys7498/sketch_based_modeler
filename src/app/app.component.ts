@@ -8,7 +8,6 @@ import { NotificationService, NotifyHandler, NIndex } from './notification-servi
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  title = 'sketch_based_modeler';
     constructor(
         private _event: EventService,
 		private _notification: NotificationService) {
@@ -53,13 +52,26 @@ export class AppComponent {
 		this._event.emit(EventType.OnMouseUp, event as AnyEvent);
 	}
 
+	/** 터치를 시작할 경우 호출되는 메서드 */
+	@HostListener('window:touchstart', ['$event'])
+	onTouchStart(event: TouchEvent): void {
+		this._event.emit(EventType.OnTouchStart, event as AnyEvent);
+	}
+	/** 터치를 하는 중의 경우 호출되는 메서드 */
+	@HostListener('window:touchmove', ['$event'])
+	onTouchMove(event: TouchEvent): void {
+		this._event.emit(EventType.OnTouchMove, event as AnyEvent);
+	}
+
+	/** 터치가 끝난 경우 호출되는 메서드 */
+	@HostListener('window:touchend', ['$event'])
+	onTouchEnd(event: TouchEvent): void {
+		this._event.emit(EventType.OnTouchEnd, event as AnyEvent);
+	}
+
+	/** 키보드 버튼을 누를때 호출되는 이벤트 */
 	@HostListener('window:keydown', ['$event'])
 	onKeyDown(event: KeyboardEvent): void {
-		let isPreventDefault = false;
-		// for (const condition of this._config.key.preventDefaultConditions) {
-		// 	if (condition(event)) { isPreventDefault = true; break; }
-		// }
-		if (isPreventDefault) { event.preventDefault(); }
 		this._event.emit(EventType.OnKeyDown, event as AnyEvent);
 	}
 
@@ -88,7 +100,6 @@ export class AppComponent {
 				this._viewportRect = this._viewportDiv.getBoundingClientRect();
 			} break;
 			case NIndex.resizedClientSize: {
-				console.log("hello")
 				this._viewportRect = this._viewportDiv.getBoundingClientRect();
 				this.onWindowResize();
 			} break;

@@ -1,12 +1,12 @@
 import { NotificationService, NotifyHandler } from 'src/app/notification-service/notification-service';
-import * as THREE from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { SceneGraphService } from '../scene-graph-service';
 import { CameraSet } from '../camera/camera-set';
 import { EventHandler, EventService, EventType } from 'src/app/event-service/event-service';
+import { WebGLRenderer } from 'three';
 
 export class Renderer{
-    public webGLRenderer: THREE.WebGLRenderer;
+    public webGLRenderer: WebGLRenderer;
     public css2DRenderer: CSS2DRenderer;
 	constructor(
 		event: EventService,
@@ -54,8 +54,8 @@ export class Renderer{
 	}
 
     /** WebGL 렌더러를 생성하고 반환하는 메서드 */
-	private createWebGLRenderer(): THREE.WebGLRenderer {
-		const webGLRenderer = new THREE.WebGLRenderer({ antialias: true });
+	private createWebGLRenderer(): WebGLRenderer {
+		const webGLRenderer = new WebGLRenderer({ antialias: true });
 		webGLRenderer.autoClear = false;
 		webGLRenderer.domElement.style.touchAction = 'none';
 		return webGLRenderer;

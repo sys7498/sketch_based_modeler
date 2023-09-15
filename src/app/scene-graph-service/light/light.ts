@@ -1,7 +1,7 @@
-import * as THREE from 'three';
 import { NotificationService } from "src/app/notification-service/notification-service";
 import { SceneGraphService } from '../scene-graph-service';
 import { RectAreaLightHelper } from 'three/examples/jsm/helpers/RectAreaLightHelper';
+import { Vector3, AmbientLight, DirectionalLight, HemisphereLight, RectAreaLight } from "three";
 
 export class Light{
     constructor(
@@ -9,47 +9,43 @@ export class Light{
         sceneGraph: SceneGraphService,
     ) {
         this._ambientLight = this.createAmbientLight('AmbientLight');
-        this._directionalLight = this.createDirectionalLight('DirectionalLight', new THREE.Vector3(50000, 50000, 50000));
-        this._pointLight = this.createPointLight('DirectionalLight', new THREE.Vector3(0, 0, 50));
-        this._rectLight = this.createRectLight(new THREE.Vector3(0, 0, 40), new THREE.Vector3(0, 0, 0));
-        this._rectLight2 = this.createRectLight(new THREE.Vector3(0, -15, 5), new THREE.Vector3(0, 0, 15));
+        this._directionalLight = this.createDirectionalLight('DirectionalLight', new Vector3(50000, 50000, 50000));
+        this._pointLight = this.createPointLight('DirectionalLight', new Vector3(0, 0, 50));
         sceneGraph.scene.add(this._ambientLight);
         //sceneGraph.scene.add(this._directionalLight);
         //sceneGraph.scene.add(this._pointLight);
-        sceneGraph.scene.add(this._rectLight);
         //sceneGraph.scene.add(this._rectLight2);
     }
 
     public rotateRectLight() {
-        this._rectLight.rotateOnWorldAxis(new THREE.Vector3(0, 0, 1), 0.01);
     }
 
-    private createAmbientLight(name: string): THREE.AmbientLight {
-		const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
+    private createAmbientLight(name: string): AmbientLight {
+		const ambientLight = new AmbientLight(0xffffff, 0.1);
 		ambientLight.name = name;
 		return ambientLight;
     }
     
-    private createDirectionalLight(name: string, position: THREE.Vector3): THREE.DirectionalLight {
-        const directionalLight = new THREE.DirectionalLight(0xffffff);
+    private createDirectionalLight(name: string, position: Vector3): DirectionalLight {
+        const directionalLight = new DirectionalLight(0xffffff);
         directionalLight.position.copy(position);
 		directionalLight.name = name;
 		return directionalLight;
     }
 
-    private createPointLight(name: string, position: THREE.Vector3): THREE.HemisphereLight {
-        const pointLight = new THREE.HemisphereLight( 0xffffbb, 0x080820, 1 );
+    private createPointLight(name: string, position: Vector3): HemisphereLight {
+        const pointLight = new HemisphereLight( 0xffffbb, 0x080820, 1 );
         pointLight.position.copy(position);
 		pointLight.name = name;
         return pointLight;
         
     }
 
-    private createRectLight(position: THREE.Vector3, lookAt: THREE.Vector3) {
+    private createRectLight(position: Vector3, lookAt: Vector3) {
         const width = 50;
         const height = 15;
         const intensity = 10;
-        const rectLight = new THREE.RectAreaLight( 0xfffff0, intensity,  width, height );
+        const rectLight = new RectAreaLight( 0xfffff0, intensity,  width, height );
         rectLight.position.copy(position);
         rectLight.lookAt( lookAt.x, lookAt.y, lookAt.z );
         const rectLightHelper = new RectAreaLightHelper( rectLight );
@@ -57,9 +53,7 @@ export class Light{
         return rectLight;
     }
     
-    private _ambientLight: THREE.AmbientLight;
-    private _directionalLight: THREE.DirectionalLight;
-    private _pointLight: THREE.HemisphereLight;
-    private _rectLight: THREE.RectAreaLight;
-    private _rectLight2: THREE.RectAreaLight;
+    private _ambientLight: AmbientLight;
+    private _directionalLight: DirectionalLight;
+    private _pointLight: HemisphereLight;
 }

@@ -2,7 +2,7 @@
 import { Injectable } from '@angular/core';
 
 /** 임의의 이벤트 타입 */
-export type AnyEvent = WheelEvent & MouseEvent & KeyboardEvent & InputEvent;
+export type AnyEvent = WheelEvent & MouseEvent & TouchEvent & KeyboardEvent & InputEvent;
 /** 이벤트 콜백 타입
  * @param event 이벤트 정보
  */
@@ -24,6 +24,12 @@ export enum EventType {
 	OnKeyDown,
 	/** 키보드 버튼 올려짐 이벤트 */
 	OnKeyUp,
+	/** 터치 시작 이벤트 */
+	OnTouchStart,
+	/** 터치 움직임 이벤트 */
+	OnTouchMove,
+	/** 터치 끝 이벤트 */
+	OnTouchEnd,
 	/** 입력 */
 	OnInput,
 	/** 총 개수 */

@@ -4,15 +4,22 @@ import { BrowserModule } from '@angular/platform-browser';
 import { AppComponent } from './app.component';
 import { BodyComponent } from './body/body.component';
 import { ViewportComponent } from './body/viewport/viewport.component';
-
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { MaterialModule } from './modules/material.module';
+import { DrawComponent } from './body/draw/draw.component';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 @NgModule({
   declarations: [
     AppComponent,
     BodyComponent,
-    ViewportComponent
+    ViewportComponent,
+    DrawComponent
   ],
   imports: [
-    BrowserModule
+    BrowserModule,
+    BrowserAnimationsModule,
+    MaterialModule,
+    MatButtonToggleModule,
   ],
   providers: [],
   bootstrap: [AppComponent]
