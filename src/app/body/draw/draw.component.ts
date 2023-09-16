@@ -30,7 +30,7 @@ export class DrawComponent {
         this._lastLinePoint = new Vector3(0);
         this._lines = [];
         this._points = [];
-        this._s = new Mesh(new SphereGeometry(0.1, 32, 32), new MeshBasicMaterial({ color: 0xffff00 }));
+        this._s = new Mesh(new SphereGeometry(0.1, 32, 32), new MeshBasicMaterial({ color: 0x000000 }));
         this.sceneGraph.group.add(this._s);
         this._eventHandler = new EventHandler(this._event);
         this._eventHandler.set(EventType.OnMouseDown, this.onMouseDown.bind(this));
@@ -53,12 +53,14 @@ export class DrawComponent {
         this.sceneGraph.group.add(this._lines[this._lines.length - 1]);
         this._points.push([this._lastLinePoint]);
     }
+
     private onTouchStart(event: TouchEvent): void {
         this._lastLinePoint = this._selection.mouseWorldPosition;
         this._lines.push(new Line(new BufferGeometry(), new LineBasicMaterial({ color: 0x00ffff })));
         this.sceneGraph.group.add(this._lines[this._lines.length - 1]);
         this._points.push([this._lastLinePoint]);
     }
+
     private onMouseMove(event: MouseEvent): void {
         this._s.position.x = this._selection.mouseWorldPosition.x;
         this._s.position.y = this._selection.mouseWorldPosition.y;
@@ -70,19 +72,26 @@ export class DrawComponent {
             }
         }
     }
+
     private onTouchMove(event: TouchEvent): void {
         this._s.position.x = this._selection.mouseWorldPosition.x;
         this._s.position.y = this._selection.mouseWorldPosition.y;
         if (this._lastLinePoint.distanceTo(this._selection.mouseWorldPosition) > 0.3) {
                 this._points[this._points.length - 1].push(this._selection.mouseWorldPosition);
                 this._lines[this._lines.length - 1].geometry.setFromPoints(this._points[this._points.length - 1]);
-                this._lastLinePoint = this._selection.mouseWorldPosition;
-            }
+            this._lastLinePoint = this._selection.mouseWorldPosition;
+        }
     }
+
     private onMouseUp(event: MouseEvent): void {
+        this._s.position.x = this._selection.mouseWorldPosition.x;
+        this._s.position.y = this._selection.mouseWorldPosition.y;
         this._isMouseDown = false;
     }
+
     private onTouchEnd(event: TouchEvent): void {
+        this._s.position.x = this._selection.mouseWorldPosition.x;
+        this._s.position.y = this._selection.mouseWorldPosition.y;
     }
     
     

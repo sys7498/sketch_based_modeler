@@ -27,7 +27,7 @@ export class AppComponent {
 	/** 마우스 휠을 움직일 경우 호출되는 메서드 */
 	@HostListener('window:mousewheel', ['$event'])
 	onMouseWheel(event: MouseEvent): void {
-		if (this.isMouseInViewport(event)) {
+		if (this.isMouseInViewport(event) && !(/Mobi/i.test(window.navigator.userAgent))) {
 			this._event.emit(EventType.OnMouseWheel, event as AnyEvent);
 		}
 	}
@@ -35,7 +35,7 @@ export class AppComponent {
 	/** 마우스를 움직일 경우 호출되는 메서드 */
 	@HostListener('window:mousemove', ['$event'])
 	onMouseMove(event: MouseEvent): void {
-		if (this.isMouseInViewport(event)) {
+		if (this.isMouseInViewport(event) && !(/Mobi/i.test(window.navigator.userAgent))) {
 			this._event.emit(EventType.OnMouseMove, event as AnyEvent);
 		}
 	}
@@ -43,30 +43,40 @@ export class AppComponent {
 	/** 마우스 버튼을 누를 경우 호출되는 메서드 */
 	@HostListener('window:mousedown', ['$event'])
 	onMouseDown(event: MouseEvent): void {
-		this._event.emit(EventType.OnMouseDown, event as AnyEvent);
+		if (this.isMouseInViewport(event) && !(/Mobi/i.test(window.navigator.userAgent))) {
+			this._event.emit(EventType.OnMouseDown, event as AnyEvent);
+		}
 	}
 
 	/** 마우스 버튼을 뗄 경우 호출되는 메서드 */
 	@HostListener('window:mouseup', ['$event'])
 	onMouseUp(event: MouseEvent): void {
-		this._event.emit(EventType.OnMouseUp, event as AnyEvent);
+		if (this.isMouseInViewport(event) && !(/Mobi/i.test(window.navigator.userAgent))) {
+			this._event.emit(EventType.OnMouseUp, event as AnyEvent);
+		}
 	}
 
 	/** 터치를 시작할 경우 호출되는 메서드 */
 	@HostListener('window:touchstart', ['$event'])
 	onTouchStart(event: TouchEvent): void {
-		this._event.emit(EventType.OnTouchStart, event as AnyEvent);
+		if ((/Mobi/i.test(window.navigator.userAgent))) {
+			this._event.emit(EventType.OnTouchStart, event as AnyEvent);
+		}
 	}
 	/** 터치를 하는 중의 경우 호출되는 메서드 */
 	@HostListener('window:touchmove', ['$event'])
 	onTouchMove(event: TouchEvent): void {
-		this._event.emit(EventType.OnTouchMove, event as AnyEvent);
+		if ((/Mobi/i.test(window.navigator.userAgent))) {
+			this._event.emit(EventType.OnTouchMove, event as AnyEvent);
+		}
 	}
 
 	/** 터치가 끝난 경우 호출되는 메서드 */
 	@HostListener('window:touchend', ['$event'])
 	onTouchEnd(event: TouchEvent): void {
-		this._event.emit(EventType.OnTouchEnd, event as AnyEvent);
+		if ((/Mobi/i.test(window.navigator.userAgent))) {
+			this._event.emit(EventType.OnTouchEnd, event as AnyEvent);
+		}
 	}
 
 	/** 키보드 버튼을 누를때 호출되는 이벤트 */

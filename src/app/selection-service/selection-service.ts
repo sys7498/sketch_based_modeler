@@ -46,11 +46,13 @@ export class SelectionService {
     }
 
     private onMouseDown(event: MouseEvent): void {
+        this.updateMouseWorldPosition(event.clientX, event.clientY, 0.5);
     }
     private onMouseMove(event: MouseEvent): void {
         this.updateMouseWorldPosition(event.clientX, event.clientY, 0.5);
     }
     private onMouseUp(event: MouseEvent): void {
+        this.updateMouseWorldPosition(event.clientX, event.clientY, 0.5);
     }
     private onTouchStart(event: TouchEvent): void {
         this.updateMouseWorldPosition(event.changedTouches[0].clientX, event.changedTouches[0].clientY, 0.5);
@@ -71,9 +73,11 @@ export class SelectionService {
 		const mouseRatioPosition = new Vector3(
 			((clientX - viewportDivRect.left) / viewportDivRect.width) * 2 - 1,
             -((clientY - viewportDivRect.top) / viewportDivRect.height) * 2 + 1, depth);
-        this._raycaster.setFromCamera(new Vector2(mouseRatioPosition.x, mouseRatioPosition.y), this._sceneGraph.cameraSet.camera);
-        const intersects = this._raycaster.intersectObject(this._sceneGraph.scene);
-        if(intersects.length > 0) this._mouseWorldPosition = intersects[0].point;
+        var vec = new Vector3(); // create once and reuse
+        vec.copy(mouseRatioPosition);
+        vec.unproject( this._sceneGraph.cameraSet.camera );
+        vec.z = 0;
+        this._mouseWorldPosition = vec;
 	}
 
 	/** 마우스가 뷰포트 내에 있는지 확인하고 결과를 반환하는 메서드
