@@ -1,1 +1,6 @@
-<mat-icon>draw</mat-icon>
+<mat-icon
+  (mousedown)="$event.stopPropagation()"
+  (click)="this.convertFreeLineToStraightLine($event)"
+  >draw</mat-icon
+>
+<p>{{ now }}</p>

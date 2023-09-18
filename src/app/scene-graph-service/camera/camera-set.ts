@@ -10,7 +10,7 @@ export class CameraSet{
         event: EventService,
         notification: NotificationService,
     ) {
-        this.camera = this.createOrthographicCamera('camera', new Vector3(0, 0, 1000));
+        this.camera = this.createOrthographicCamera('camera', new Vector3(0, 0, 10000));
         this.orbitControls = undefined as unknown as OrbitControls;
         this._viewportDiv = undefined as unknown as HTMLDivElement;
         this._notifyHandler = new NotifyHandler(notification, this.onNotify.bind(this));
@@ -70,7 +70,7 @@ export class CameraSet{
 	
 	private createOrthographicCamera(name: string, position: Vector3): OrthographicCamera {
 		const camera = new OrthographicCamera(
-			1, 1, 1, 1, 0.1, 2000);
+			1, 1, 1, 1, 0.1, 100000);
 		camera.name = name;
 		camera.up.set(0, 0, 1);
 		camera.position.copy(position);
