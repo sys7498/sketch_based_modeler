@@ -1,5 +1,5 @@
 /* Three.js modules */
-import { Vector3, Mesh, Raycaster, Scene, Vector2 } from 'three';
+import { Vector3, Mesh, Raycaster, Scene, Vector2, SphereGeometry, MeshBasicMaterial } from 'three';
 import { NotificationService, NotifyHandler, NIndex } from '../notification-service/notification-service';
 import { SceneGraphService } from '../scene-graph-service/scene-graph-service';
 import { EventHandler, EventService, EventType } from '../event-service/event-service';
@@ -9,6 +9,7 @@ import { Injectable } from '@angular/core';
 export class SelectionService {
 
     private _mouseWorldPosition: Vector3;
+    private _mouseRatioPosition: Vector3;
     private _raycaster: Raycaster;
 	/** 뷰포트 div 요소 */
 	protected _viewportDiv: HTMLDivElement;
@@ -26,6 +27,7 @@ export class SelectionService {
         notification: NotificationService,
         private _sceneGraph: SceneGraphService,) {
         this._mouseWorldPosition = new Vector3(0);
+        this._mouseRatioPosition = new Vector3(0);
         this._raycaster = new Raycaster();
         this._eventHandler = new EventHandler(event);
         this._eventHandler.set(EventType.OnMouseDown, this.onMouseDown.bind(this));
@@ -35,7 +37,8 @@ export class SelectionService {
         this._eventHandler.set(EventType.OnTouchMove, this.onTouchMove.bind(this));
         this._eventHandler.set(EventType.OnTouchEnd, this.onTouchEnd.bind(this));
 		this._notifyHandler = new NotifyHandler(notification, this.onNotify.bind(this));
-		this._viewportDiv = undefined as unknown as HTMLDivElement;
+        this._viewportDiv = undefined as unknown as HTMLDivElement;
+        
 	}
 
 	/** 알림 수신 콜백 메서드 */
@@ -70,13 +73,13 @@ export class SelectionService {
 	 */
 	protected updateMouseWorldPosition(clientX: number, clientY: number, depth: number) {
 		const viewportDivRect = this._viewportDiv.getBoundingClientRect();
-		const mouseRatioPosition = new Vector3(
+		this._mouseRatioPosition = new Vector3(
 			((clientX - viewportDivRect.left) / viewportDivRect.width) * 2 - 1,
             -((clientY - viewportDivRect.top) / viewportDivRect.height) * 2 + 1, depth);
         var vec = new Vector3(); // create once and reuse
-        vec.copy(mouseRatioPosition);
+        vec.copy(this._mouseRatioPosition);
         vec.unproject( this._sceneGraph.cameraSet.camera );
-        vec.z = 0;
+        vec.setZ(10);
         this._mouseWorldPosition = vec;
 	}
 
@@ -94,6 +97,9 @@ export class SelectionService {
 
     get mouseWorldPosition(): Vector3 {
         return this._mouseWorldPosition;
+    }
+    get mouseRatioPosition(): Vector3 {
+        return this._mouseRatioPosition;
     }
 	
 

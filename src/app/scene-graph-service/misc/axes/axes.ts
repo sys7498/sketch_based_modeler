@@ -1,13 +1,10 @@
-
 import { AxesHelper, MeshBasicMaterial } from 'three';
 import { SceneGraphService } from '../../scene-graph-service';
 
-export class Axes{
-    constructor(
-        sceneGraph: SceneGraphService,
-    ) {
+export class Axes {
+    constructor(sceneGraph: SceneGraphService) {
         this._axes = this.createAxis('Axes');
-        //sceneGraph.misc.add(this._axes);
+        sceneGraph.misc.add(this._axes);
     }
 
     private createAxis(name: string): AxesHelper {

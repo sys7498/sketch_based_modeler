@@ -8,12 +8,14 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MaterialModule } from './modules/material.module';
 import { DrawComponent } from './body/draw/draw.component';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { FeatureComponent } from './body/feature/feature.component';
 @NgModule({
   declarations: [
     AppComponent,
     BodyComponent,
     ViewportComponent,
-    DrawComponent
+    DrawComponent,
+    FeatureComponent
   ],
   imports: [
     BrowserModule,
