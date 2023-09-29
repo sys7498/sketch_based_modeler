@@ -344,6 +344,7 @@ export class LineService {
 
     /** k-means++ 방법 적용 */
     public initCentroid(dirPoints: any[]): Vector3[] {
+        //
         const k = 3;
         let minX = math.min(dirPoints.map((data) => data.point.x));
         let maxX = math.max(dirPoints.map((data) => data.point.x));
