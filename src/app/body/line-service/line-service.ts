@@ -153,41 +153,56 @@ export class LineService {
         }
     }
 
+    /** 곡선을 직선으로(snap도 같이 함) */
     public convertFreeLineToStraightLine(): void {
         const index = this.lines.length - 1;
         const pointLen = this.lines[index].points.length;
         if (pointLen <= 10) return;
         console.log(`${index}번째 직선화 시작`);
 
-        //LEAST SQUARE METHOD
-        const matrixA: number[][] = [];
-        const matrixB: number[][] = [];
-        for (let j = 0; j < pointLen; j++) {
-            matrixA.push([this.lines[index].points[j].x, 1]);
-            matrixB.push([this.lines[index].points[j].y]);
-        }
-        // X = (A^TA)^-1 * A^TB
-        const matrixATA = math.multiply(math.transpose(matrixA), matrixA);
-        const matrixAATI = math.inv(matrixATA);
-        const matrixAT = math.transpose(matrixA);
-        const matrixATB = math.multiply(matrixAT, matrixB);
-        const matrixX = math.multiply(matrixAATI, matrixATB);
-        const a = matrixX[0][0];
-        const b = matrixX[1][0];
         let startPoint = new Vector3();
-        startPoint.set(
-            this.lines[index].points[0].x,
-            a * this.lines[index].points[0].x + b,
-            10
-        );
         let endPoint = new Vector3();
-        endPoint.set(
-            this.lines[index].points[pointLen - 1].x,
-            a * this.lines[index].points[pointLen - 1].x + b,
-            10
-        );
 
-        if (endPoint.y <= startPoint.y) {
+        if (
+            Math.abs(
+                this.lines[index].points[0].x -
+                    this.lines[index].points[pointLen - 1].x
+            ) <
+            this.scale / 4
+        ) {
+            // 선이 y 축에 평행한 (기울기가 무한대인) 경우에는 마지막 점의 x를 중앙값(median)으로 대체
+            startPoint.copy(this.lines[index].points[0].clone());
+            let xs = this.lines[index].points.map((point) => point.x);
+            let xMedian = math.median(xs);
+            endPoint.set(xMedian, this.lines[index].points[pointLen - 1].y, 10);
+        } else {
+            //LEAST SQUARE METHOD
+            const matrixA: number[][] = [];
+            const matrixB: number[][] = [];
+            for (let j = 0; j < pointLen; j++) {
+                matrixA.push([this.lines[index].points[j].x, 1]);
+                matrixB.push([this.lines[index].points[j].y]);
+            }
+            // X = (A^TA)^-1 * A^TB
+            const matrixATA = math.multiply(math.transpose(matrixA), matrixA);
+            const matrixAATI = math.inv(matrixATA);
+            const matrixAT = math.transpose(matrixA);
+            const matrixATB = math.multiply(matrixAT, matrixB);
+            const matrixX = math.multiply(matrixAATI, matrixATB);
+            const a = matrixX[0][0];
+            const b = matrixX[1][0];
+            startPoint.set(
+                this.lines[index].points[0].x,
+                a * this.lines[index].points[0].x + b,
+                10
+            );
+            endPoint.set(
+                this.lines[index].points[pointLen - 1].x,
+                a * this.lines[index].points[pointLen - 1].x + b,
+                10
+            );
+        }
+        if (endPoint.y < startPoint.y) {
             const tempStartPoint = startPoint.clone();
             startPoint.copy(endPoint.clone());
             endPoint.copy(tempStartPoint.clone());
@@ -239,7 +254,7 @@ export class LineService {
             }
         }
         minPoint = this.lines[minLineIndex].points[minLinePointIndex].clone();
-        if (minPointDistance < 5) {
+        if (minPointDistance < this.scale / 2) {
             point = minPoint.clone();
             if (pos === 'start') {
                 this.lines[this.lines.length - 1].connectedStartLineName =
@@ -286,7 +301,7 @@ export class LineService {
             }
         }
 
-        if (minLineDistance < 3) {
+        if (minLineDistance < this.scale / 3) {
             point = minLinePoint.clone();
             if (pos === 'start') {
                 this.lines[this.lines.length - 1].connectedStartLineName =
@@ -377,25 +392,7 @@ export class LineService {
             );
             centroids.push(maxDistancePoint!.point);
         }
-        let dp1, dp2, dp3;
-        dp1 = new Mesh(
-            new SphereGeometry(0.05),
-            new MeshBasicMaterial({ color: 0x000000 })
-        );
-        dp1.position.copy(centroids[0].clone());
-        this._sceneGraph.misc.add(dp1);
-        dp2 = new Mesh(
-            new SphereGeometry(0.05),
-            new MeshBasicMaterial({ color: 0x000000 })
-        );
-        dp2.position.copy(centroids[1].clone());
-        this._sceneGraph.misc.add(dp2);
-        dp3 = new Mesh(
-            new SphereGeometry(0.05),
-            new MeshBasicMaterial({ color: 0x000000 })
-        );
-        dp3.position.copy(centroids[2].clone());
-        this._sceneGraph.misc.add(dp3);
+
         return centroids;
     }
 
@@ -456,7 +453,16 @@ export class LineService {
                 centroid.divideScalar(clusteredPoints[centroidIndex].length);
                 centroids[centroidIndex] = centroid;
             }
+        }
 
+        if (clusteredPoints.find((cluster) => cluster.length === 0)) {
+            let loopNum = 0;
+            while (true) {
+                if (loopNum === 5) alert('다시 그려주세요');
+                this.clustering();
+                loopNum++;
+            }
+        } else {
             for (let c = 0; c < clusteredPoints.length; c++) {
                 clusteredPoints[c].forEach((cluster) => {
                     let line = this.lines.find((line) => {
@@ -470,6 +476,27 @@ export class LineService {
                 });
             }
         }
+
+        console.log(clusteredPoints);
+        let dp1, dp2, dp3;
+        dp1 = new Mesh(
+            new SphereGeometry(0.05),
+            new MeshBasicMaterial({ color: 0x000000 })
+        );
+        dp1.position.copy(centroids[0].clone());
+        this._sceneGraph.misc.add(dp1);
+        dp2 = new Mesh(
+            new SphereGeometry(0.05),
+            new MeshBasicMaterial({ color: 0x000000 })
+        );
+        dp2.position.copy(centroids[1].clone());
+        this._sceneGraph.misc.add(dp2);
+        dp3 = new Mesh(
+            new SphereGeometry(0.05),
+            new MeshBasicMaterial({ color: 0x000000 })
+        );
+        dp3.position.copy(centroids[2].clone());
+        this._sceneGraph.misc.add(dp3);
     }
 
     public visualizeDirections() {
