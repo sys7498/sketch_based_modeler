@@ -13,8 +13,9 @@
     (mousedown)="$event.stopPropagation()"
     (mosemove)="$event.stopPropagation()"
     (mouseup)="$event.stopPropagation()"
+    (click)="this.onShowDirections()"
 >
-    변환
+    방향보여주기
 </button>
 <button
     class="feature-button"
@@ -22,7 +23,17 @@
     (mousedown)="$event.stopPropagation()"
     (mosemove)="$event.stopPropagation()"
     (mouseup)="$event.stopPropagation()"
-    (click)="this.onShowDirections()"
+    (click)="this.onClickConvert()"
 >
-    방향보여주기
+    변환
 </button>
+<span class="toggle">
+    그리기
+    <mat-slide-toggle
+        (mousedown)="$event.stopPropagation()"
+        (mosemove)="$event.stopPropagation()"
+        (mouseup)="$event.stopPropagation()"
+    >
+    </mat-slide-toggle>
+    변환 뷰
+</span>

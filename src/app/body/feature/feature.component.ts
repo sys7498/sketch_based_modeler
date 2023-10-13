@@ -21,7 +21,9 @@ export class FeatureComponent {
     public onShowDirections() {
         this._lineService.visualizeDirections();
     }
-    public onClickConvert() {}
+    public onClickConvert() {
+        this._lineService.convertTo3D();
+    }
     public changeCamera() {}
     public moveCamera() {}
 }

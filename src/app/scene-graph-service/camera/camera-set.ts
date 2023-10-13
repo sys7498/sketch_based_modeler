@@ -3,7 +3,7 @@ import {
     NotificationService,
     NotifyHandler,
 } from 'src/app/notification-service/notification-service';
-import { OrthographicCamera, Vector3 } from 'three';
+import { OrthographicCamera, PerspectiveCamera, Vector3 } from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {
@@ -12,13 +12,20 @@ import {
     EventType,
 } from 'src/app/event-service/event-service';
 export class CameraSet {
-    public camera: OrthographicCamera;
+    public camera: OrthographicCamera | PerspectiveCamera;
+    private _orthographicCamera: OrthographicCamera;
+    private _perspectiveCamera: PerspectiveCamera;
     public orbitControls: OrbitControls;
     constructor(event: EventService, notification: NotificationService) {
-        this.camera = this.createOrthographicCamera(
-            'camera',
+        this._orthographicCamera = this.createOrthographicCamera(
+            'orthograpicCamera',
             new Vector3(0, 0, 1000)
         );
+        this._perspectiveCamera = this.createPerspectiveCamera(
+            'perspectiveCamera',
+            new Vector3(500, 500, 500)
+        );
+        this.camera = this._orthographicCamera;
         this.orbitControls = undefined as unknown as OrbitControls;
         this._viewportDiv = undefined as unknown as HTMLDivElement;
         this._notifyHandler = new NotifyHandler(
@@ -62,15 +69,26 @@ export class CameraSet {
     }
 
     public onWindowResize(): void {
-        (this.camera as OrthographicCamera).left =
-            -this._viewportDiv.clientWidth / 2;
-        (this.camera as OrthographicCamera).right =
-            this._viewportDiv.clientWidth / 2;
-        (this.camera as OrthographicCamera).top =
-            this._viewportDiv.clientHeight / 2;
-        (this.camera as OrthographicCamera).bottom =
-            -this._viewportDiv.clientHeight / 2;
-        this.camera.updateProjectionMatrix();
+        this._perspectiveCamera.aspect =
+            this._viewportDiv.clientWidth / this._viewportDiv.clientHeight;
+        this._perspectiveCamera.updateProjectionMatrix();
+        this._orthographicCamera.left = -this._viewportDiv.clientWidth / 2;
+        this._orthographicCamera.right = this._viewportDiv.clientWidth / 2;
+        this._orthographicCamera.top = this._viewportDiv.clientHeight / 2;
+        this._orthographicCamera.bottom = -this._viewportDiv.clientHeight / 2;
+        this._orthographicCamera.updateProjectionMatrix();
+        if (this.orbitControls) this.orbitControls.update();
+    }
+
+    public changeCamera(camera: 'ortho' | 'perspective') {
+        if (camera === 'ortho') {
+            this.camera = this._orthographicCamera;
+            this.orbitControls.enableRotate = false;
+        } else {
+            this.camera = this._perspectiveCamera;
+            this.orbitControls.enableRotate = true;
+        }
+        this.orbitControls.object = this.camera;
         if (this.orbitControls) this.orbitControls.update();
     }
 
@@ -103,6 +121,18 @@ export class CameraSet {
         camera.up.set(0, 0, 1);
         camera.lookAt(new Vector3(0, 0, 0));
         camera.zoom = 10;
+        camera.position.copy(position);
+        return camera;
+    }
+
+    private createPerspectiveCamera(
+        name: string,
+        position: Vector3
+    ): PerspectiveCamera {
+        const camera = new PerspectiveCamera(60, 1, 0.1, 100000);
+        camera.name = name;
+        camera.up.set(0, 0, 1);
+        camera.lookAt(new Vector3(0, 0, 0));
         camera.position.copy(position);
         return camera;
     }
