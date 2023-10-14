@@ -77,7 +77,6 @@ export class MyPoint extends Mesh {
     public convertedPosition: Vector3;
     public label: CSS2DObject | null;
     public connectedLines: PointConnectedLine[];
-    public connectedPoints: PointConnectedLine[];
     public updated: boolean;
     constructor(name: string) {
         super(
@@ -88,7 +87,6 @@ export class MyPoint extends Mesh {
         this.convertedPosition = new Vector3();
         this.label = null;
         this.connectedLines = [];
-        this.connectedPoints = [];
         this.updated = false;
     }
     public makeLabel() {
@@ -104,20 +102,18 @@ export class MyPoint extends Mesh {
 export interface PointConnectedLine {
     line: MyLine;
     pos: 'start' | 'end' | 'edge';
-    point: MyPoint;
+    point: MyPoint | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class LineService {
-    public tempNNN = 0;
-    public now: string = '';
-    public nowMode: 'straight' | 'free' | 'erase';
+    public nowDimension: '2D' | '3D';
+    public nowDrawMode: 'straight' | 'free' | 'erase';
     public snap: boolean;
     public scale: number;
     private _lastLinePoint: Vector3;
     public lines: MyLine[];
     public points: MyPoint[];
-    private _axisConfirmVectors: Vector3[];
     private _rayCaster: Raycaster;
     private _viewportDiv: HTMLDivElement;
     private _eventHandler: EventHandler;
@@ -129,7 +125,8 @@ export class LineService {
         private _selection: SelectionService,
         private _sceneGraph: SceneGraphService
     ) {
-        this.nowMode = 'straight';
+        this.nowDimension = '2D';
+        this.nowDrawMode = 'straight';
         this.snap = true;
         this._lastLinePoint = new Vector3(0, 0, 10);
         this.lines = [];
@@ -137,11 +134,6 @@ export class LineService {
         this._rayCaster = new Raycaster();
         this._rayCaster.params.Line!.threshold = 0.5;
         this.scale = 0;
-        this._axisConfirmVectors = [
-            new Vector3(0),
-            new Vector3(0),
-            new Vector3(0),
-        ];
         this._viewportDiv = undefined as unknown as HTMLDivElement;
         this._eventHandler = new EventHandler(this._event);
         this._notifyHandler = new NotifyHandler(
@@ -172,7 +164,7 @@ export class LineService {
             -((30 - viewportDivRect.top) / viewportDivRect.height) * 2 + 1,
             0.5
         );
-        var startPoint = new Vector3(); // create once and reuse
+        var startPoint = new Vector3();
         startPoint.copy(start);
         startPoint.unproject(this._sceneGraph.cameraSet.camera);
         startPoint.setZ(10);
@@ -181,7 +173,7 @@ export class LineService {
             -((30 - viewportDivRect.top) / viewportDivRect.height) * 2 + 1,
             0.5
         );
-        var endPoint = new Vector3(); // create once and reuse
+        var endPoint = new Vector3();
         endPoint.copy(end);
         endPoint.unproject(this._sceneGraph.cameraSet.camera);
         endPoint.setZ(10);
@@ -228,7 +220,7 @@ export class LineService {
             }
         });
         line.myPoints.forEach((point, index) => {
-            point.connectedPoints.push({
+            point.connectedLines.push({
                 point: line.myPoints[index === 0 ? 1 : 0],
                 line: line,
                 pos: index === 0 ? 'end' : 'start',
@@ -303,6 +295,11 @@ export class LineService {
             line.connectedEdgeLines.forEach((edgeLine) => {
                 edgeLine.line.myPoints.forEach((myPoint: MyPoint) => {
                     if (myPoint.position.equals(edgeLine.position)) {
+                        myPoint.connectedLines.push({
+                            point: null,
+                            line: line,
+                            pos: 'edge',
+                        });
                         edgeLine.point = myPoint;
                         return;
                     }
@@ -519,16 +516,6 @@ export class LineService {
             }
         }
         if (clusteredPoints.find((cluster) => cluster.length === 0)) {
-            /** 클러스터링이 제대로 안되었다면 최대 5회 다시 실행 */
-            /*let loopNum = 0;
-            while (true) {
-                if (loopNum === 5) {
-                    alert('다시 그려주세요');
-                    break;
-                }
-                this.clustering();
-                loopNum++;
-            }*/
             alert('클러스팅 실패');
         } else {
             this.setAxis(clusteredPoints);
@@ -625,13 +612,13 @@ export class LineService {
                     }
                 }
 
-                let point0 = line.myPoints[0].connectedPoints.find(
+                let point0 = line.myPoints[0].connectedLines.find(
                     (connectedPoint) => connectedPoint.line === line
                 );
                 if (point0 !== undefined) {
                     if (point0.pos === 'end') point0.pos = 'start';
                 }
-                let point1 = line.myPoints[1].connectedPoints.find(
+                let point1 = line.myPoints[1].connectedLines.find(
                     (connectedPoint) => connectedPoint.line === line
                 );
                 if (point1 !== undefined) {
@@ -674,18 +661,34 @@ export class LineService {
     }
 
     public convertTo3D() {
+        this.clustering();
         /** 점 위치 찾기 */
         this.points[0].convertedPosition.set(100, 100, 100);
         this.points[0].updated = true;
+        this.udpateSegmentConvertedLength();
         this.updateConvertedPoints(this.points[0]);
 
-        this.lines.forEach((line) => {
-            console.log(
-                line.name,
-                line.myPoints.map((myPoint) =>
-                    myPoint.convertedPosition.clone()
+        console.log(
+            'Line',
+            this.lines.map((line) => line.updatedConvertedLength)
+        );
+        console.log(
+            'point',
+            this.points.map((point) => point.updated),
+            this.points.map((point) =>
+                point.connectedLines.map(
+                    (connectedPoint) => connectedPoint.line.name
                 )
-            );
+            )
+        );
+        console.log(
+            'resultConvertedPoint',
+            this.points.map((point) => point.convertedPosition)
+        );
+
+        this.nowDimension = '3D';
+
+        this.lines.forEach((line) => {
             let nlG = new BufferGeometry().setFromPoints(
                 line.myPoints.map((myPoint) =>
                     myPoint.convertedPosition.clone()
@@ -697,6 +700,104 @@ export class LineService {
         this._sceneGraph.cameraSet.changeCamera('perspective');
     }
 
+    /**
+     * edge에 연결된 직선도 같이 찾아보기 해야됨.
+     * @param targetLine
+     */
+    public udpateSegmentConvertedLength() {
+        let sameAxisLines: MyLine[][] = [[], [], []];
+        this.lines.forEach((line) => {
+            if (line.axis?.equals(new Vector3(1, 0, 0))) {
+                sameAxisLines[0].push(line);
+            } else if (line.axis?.equals(new Vector3(0, 1, 0))) {
+                sameAxisLines[1].push(line);
+            } else {
+                sameAxisLines[2].push(line);
+            }
+        });
+        this.defineConvertedLength(sameAxisLines[0][0]); // 맨 첫번째 라인은 길이를 정해주자.
+        this.findLength(sameAxisLines[0]);
+        this.findLength(sameAxisLines[1]);
+        this.findLength(sameAxisLines[2]);
+    }
+
+    public findLength(targetLineArray: MyLine[]) {
+        if (
+            targetLineArray.every(
+                (line) => line.updatedConvertedLength === false
+            )
+        ) {
+            this.defineConvertedLength(targetLineArray[0]);
+        }
+        for (let targetLine of targetLineArray) {
+            for (let newLine of targetLineArray) {
+                if (newLine !== targetLine && !newLine.updatedConvertedLength) {
+                    if (
+                        this.checkIsConnected(
+                            targetLine.myPoints[0],
+                            newLine.myPoints[0]
+                        ) &&
+                        this.checkIsConnected(
+                            targetLine.myPoints[1],
+                            newLine.myPoints[1]
+                        )
+                    ) {
+                        newLine.convertedLength = targetLine.convertedLength;
+                        newLine.updatedConvertedLength = true;
+                    }
+                }
+            }
+        }
+        console.log(
+            targetLineArray[0].axis,
+            targetLineArray.map((line) => line.updatedConvertedLength)
+        );
+        if (
+            targetLineArray.every(
+                (line) => line.updatedConvertedLength === true
+            )
+        ) {
+            console.log('all true');
+            return;
+        } else {
+            const newLineArray: MyLine[] = targetLineArray.filter(
+                (line) => line.updatedConvertedLength === false
+            );
+            this.findLength(newLineArray);
+        }
+    }
+
+    public checkIsConnected(point1: MyPoint, point2: MyPoint) {
+        let point1ConnectedLine = point1.connectedLines.map(
+            (connectedPoint) => connectedPoint.line
+        );
+        let point2ConnectedLine = point2.connectedLines.map(
+            (connectedPoint) => connectedPoint.line
+        );
+
+        if (
+            point1ConnectedLine.filter((line) =>
+                point2ConnectedLine.includes(line)
+            ).length > 0
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public defineConvertedLength(targetLine: MyLine) {
+        let target2dLength = targetLine.myPoints[0].position.distanceTo(
+            targetLine.myPoints[1].position
+        );
+        let standard2dLength = this.lines[0].myPoints[0].position.distanceTo(
+            this.lines[0].myPoints[1].position
+        );
+        let offset = target2dLength / standard2dLength;
+        targetLine.convertedLength = this.lines[0].convertedLength * offset;
+        targetLine.updatedConvertedLength = true;
+    }
+
     /** 다른 한쪽 끝의 입체공간 포지션을 구하는 함수 */
     public findConverted2ndPosition(
         firstPoint: MyPoint,
@@ -706,7 +807,6 @@ export class LineService {
     ): Vector3 {
         let secondPosition = new Vector3(0);
         let offset = 1;
-        console.log(firstPoint.name, firstPointPos, line.name);
         if (firstPointPos === 'start') {
             offset = 1;
         } else if (firstPointPos === 'end') {
@@ -726,29 +826,36 @@ export class LineService {
     /** 라인으로 연결된 다음 포인트를 업데이트하는 재귀함수
      */
     public updateConvertedPoints(point: MyPoint) {
-        point.connectedPoints.forEach((connectedPoint) => {
-            if (
-                !connectedPoint.point.updated &&
-                (connectedPoint.pos === 'start' || connectedPoint.pos === 'end')
-            ) {
-                connectedPoint.point.convertedPosition.copy(
-                    this.findConverted2ndPosition(
-                        point,
-                        connectedPoint.pos,
-                        connectedPoint.line
-                    )
-                );
-                connectedPoint.point.updated = true;
-                this.updateConvertedPoints(connectedPoint.point);
+        point.connectedLines.forEach((connectedPoint) => {
+            if (connectedPoint.point !== null) {
+                if (
+                    !connectedPoint.point.updated &&
+                    connectedPoint.line.updatedConvertedLength &&
+                    (connectedPoint.pos === 'start' ||
+                        connectedPoint.pos === 'end')
+                ) {
+                    connectedPoint.point.convertedPosition.copy(
+                        this.findConverted2ndPosition(
+                            point,
+                            connectedPoint.pos,
+                            connectedPoint.line
+                        )
+                    );
+                    connectedPoint.point.updated = true;
+                    this.updateConvertedPoints(connectedPoint.point);
+                }
             }
         });
-        point.connectedPoints.forEach((connectedPoint) => {
-            connectedPoint.line.connectedEdgeLines.forEach((edgeLine) => {
-                if (!edgeLine.point.updated) {
+        point.connectedLines.forEach((connectedLine) => {
+            connectedLine.line.connectedEdgeLines.forEach((edgeLine) => {
+                if (
+                    !edgeLine.point.updated &&
+                    connectedLine.line.updatedConvertedLength
+                ) {
                     let startPosition =
-                        connectedPoint.line.myPoints[0].position.clone();
+                        connectedLine.line.myPoints[0].position.clone();
                     let endPosition =
-                        connectedPoint.line.myPoints[1].position.clone();
+                        connectedLine.line.myPoints[1].position.clone();
                     let targetPosition = edgeLine.point.position.clone();
                     let offset = math.round(
                         math.abs(
@@ -759,23 +866,26 @@ export class LineService {
                     );
                     edgeLine.point.convertedPosition.copy(
                         this.findConverted2ndPosition(
-                            connectedPoint.line.myPoints[0],
+                            connectedLine.line.myPoints[0],
                             'edge',
-                            connectedPoint.line,
+                            connectedLine.line,
                             offset
                         )
                     );
-                    console.log(edgeLine.point.convertedPosition);
                     edgeLine.point.updated = true;
                     this.updateConvertedPoints(edgeLine.point);
                 }
             });
         });
+
+        /** 재귀 결정 조건 */
+        if (
+            this.points
+                .map((point) => point.updated)
+                .every((updated) => updated === true)
+        )
+            return;
     }
-
-    public findSameLengthLine() {}
-
-    public updateConvertedLength() {}
 
     private getLineByName(name: string): MyLine | undefined {
         return this.lines.find((line) => line.name === name);
@@ -789,4 +899,5 @@ export class LineService {
 /**
  *
  * 아직 점 위치 업데이트 한참 더 해야됨.
+ * connectedLines의 접근으로 가야함. 연결된 선이 더 말이 맞음. 점으로 가면 엣지의 경우 고려 불가능.
  */

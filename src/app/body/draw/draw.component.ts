@@ -115,6 +115,7 @@ export class DrawComponent {
     }
 
     private onMouseDown(event: MouseEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
         if (event.button === MouseEventButton.Left) {
             this._isMouseDown = true;
             if (this.nowMode !== 'erase') {
@@ -124,6 +125,7 @@ export class DrawComponent {
     }
 
     private onTouchStart(event: TouchEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
         if (event.changedTouches.length === 1) {
             if (this.nowMode !== 'erase') {
                 this._lineService.drawLineStart();
@@ -132,6 +134,7 @@ export class DrawComponent {
     }
 
     private onMouseMove(event: MouseEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
         if (event.button === MouseEventButton.Left) {
             if (this.nowMode !== 'erase') {
                 if (this._isMouseDown) {
@@ -146,6 +149,7 @@ export class DrawComponent {
     }
 
     private onTouchMove(event: TouchEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
         if (event.changedTouches.length === 1) {
             if (this.nowMode !== 'erase') {
                 this._lineService.drawLine();
@@ -156,6 +160,7 @@ export class DrawComponent {
     }
 
     private onMouseUp(event: MouseEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
         if (event.button === MouseEventButton.Left) {
             if (this.nowMode === 'straight') {
                 this._lineService.convertFreeLineToStraightLine();
@@ -171,6 +176,7 @@ export class DrawComponent {
     }
 
     private onTouchEnd(event: TouchEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
         if (event.changedTouches.length === 1) {
             if (this.nowMode === 'straight') {
                 this._lineService.convertFreeLineToStraightLine();
