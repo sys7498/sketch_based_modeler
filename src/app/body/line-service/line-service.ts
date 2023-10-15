@@ -818,6 +818,7 @@ export class LineService {
         }
     }
 
+    /** 변환된 길이를 정해주는 함수. (더는 길이를 정할 수 없을 떄 사용하는 함수) */
     public defineConvertedLength(targetLine: MyLine) {
         let target2dLength = targetLine.myPoints[0].position.distanceTo(
             targetLine.myPoints[1].position
