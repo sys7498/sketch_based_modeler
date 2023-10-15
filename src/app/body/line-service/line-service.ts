@@ -102,7 +102,7 @@ export class MyPoint extends Mesh {
 export interface PointConnectedLine {
     line: MyLine;
     pos: 'start' | 'end' | 'edge';
-    point: MyPoint | null;
+    point: MyPoint | Vector3; // MyPoint가 없다면 위치라도 저장해둬야함.
 }
 
 @Injectable({ providedIn: 'root' })
@@ -296,7 +296,7 @@ export class LineService {
                 edgeLine.line.myPoints.forEach((myPoint: MyPoint) => {
                     if (myPoint.position.equals(edgeLine.position)) {
                         myPoint.connectedLines.push({
-                            point: null,
+                            point: myPoint.position.clone(),
                             line: line,
                             pos: 'edge',
                         });
@@ -666,6 +666,13 @@ export class LineService {
         this.points[0].convertedPosition.set(100, 100, 100);
         this.points[0].updated = true;
         this.udpateSegmentConvertedLength();
+        console.log(
+            this.points.map((point) =>
+                point.connectedLines.map(
+                    (connectedPoint) => connectedPoint.line.name
+                )
+            )
+        );
         this.updateConvertedPoints(this.points[0]);
 
         console.log(
@@ -826,26 +833,62 @@ export class LineService {
     /** 라인으로 연결된 다음 포인트를 업데이트하는 재귀함수
      */
     public updateConvertedPoints(point: MyPoint) {
+        /** 꼭짓점끼리 연결된 점의 입체공간 점 계산 */
         point.connectedLines.forEach((connectedPoint) => {
-            if (connectedPoint.point !== null) {
+            if (connectedPoint.pos !== 'edge') {
                 if (
-                    !connectedPoint.point.updated &&
+                    !(connectedPoint.point as MyPoint).updated &&
                     connectedPoint.line.updatedConvertedLength &&
                     (connectedPoint.pos === 'start' ||
                         connectedPoint.pos === 'end')
                 ) {
-                    connectedPoint.point.convertedPosition.copy(
+                    (connectedPoint.point as MyPoint).convertedPosition.copy(
                         this.findConverted2ndPosition(
                             point,
                             connectedPoint.pos,
                             connectedPoint.line
                         )
                     );
-                    connectedPoint.point.updated = true;
-                    this.updateConvertedPoints(connectedPoint.point);
+                    (connectedPoint.point as MyPoint).updated = true;
+                    this.updateConvertedPoints(connectedPoint.point as MyPoint);
+                }
+            } else {
+                // point가 edge인경우 다시 생각해보기
+                if (connectedPoint.line.updatedConvertedLength) {
+                    console.log(connectedPoint.line);
+                    let point0ToEdgeDistance = (connectedPoint.point as Vector3)
+                        .clone()
+                        .distanceTo(connectedPoint.line.myPoints[0].position);
+                    let point0Topoint1Distance =
+                        connectedPoint.line.myPoints[0].position.distanceTo(
+                            connectedPoint.line.myPoints[1].position
+                        );
+                    let offset = math.round(
+                        point0ToEdgeDistance / point0Topoint1Distance,
+                        1
+                    );
+                    connectedPoint.line.myPoints[0].updated = true;
+                    connectedPoint.line.myPoints[0].convertedPosition.copy(
+                        this.findConverted2ndPosition(
+                            point,
+                            'edge',
+                            connectedPoint.line,
+                            -offset
+                        )
+                    );
+                    connectedPoint.line.myPoints[1].updated = true;
+                    connectedPoint.line.myPoints[1].convertedPosition.copy(
+                        this.findConverted2ndPosition(
+                            connectedPoint.line.myPoints[0],
+                            'start',
+                            connectedPoint.line
+                        )
+                    );
                 }
             }
         });
+
+        /** 엣지에 연결된 점의 입체공간 점 계산산 */
         point.connectedLines.forEach((connectedLine) => {
             connectedLine.line.connectedEdgeLines.forEach((edgeLine) => {
                 if (
@@ -877,6 +920,8 @@ export class LineService {
                 }
             });
         });
+
+        /** 아무하고도 연결되지 않은 점의 입체공간 점 계산  */
 
         /** 재귀 결정 조건 */
         if (
