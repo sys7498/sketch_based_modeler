@@ -673,8 +673,33 @@ export class LineService {
                 )
             )
         );
-        this.updateConvertedPoints(this.points[0]);
-
+        //this.updateConvertedPoints(this.points);
+        /** 시작또는 끝점으로 계속 연결된 점들만 찾음 */
+        this.newUpdateConvertedPosition(this.points[0]);
+        this.lines.forEach((line) => {
+            if (line.connectedEdgeLines.length > 0) {
+                line.connectedEdgeLines.forEach((edgeLine) => {
+                    if (!edgeLine.point.updated) {
+                        let startPoint = line.myPoints[0].position.clone();
+                        let endPoint = line.myPoints[1].position.clone();
+                        let offsetPoint = edgeLine.position.clone();
+                        let offset =
+                            offsetPoint.distanceTo(startPoint) /
+                            startPoint.distanceTo(endPoint);
+                        edgeLine.point.convertedPosition.copy(
+                            this.findConverted2ndPosition(
+                                line.myPoints[0],
+                                'edge',
+                                line,
+                                offset
+                            )
+                        );
+                        edgeLine.point.updated = true;
+                        this.newUpdateConvertedPosition(edgeLine.point);
+                    }
+                });
+            }
+        });
         console.log(
             'Line',
             this.lines.map((line) => line.updatedConvertedLength)
@@ -832,8 +857,86 @@ export class LineService {
 
     /** 라인으로 연결된 다음 포인트를 업데이트하는 재귀함수
      */
-    public updateConvertedPoints(point: MyPoint) {
-        /** 꼭짓점끼리 연결된 점의 입체공간 점 계산 */
+    public updateConvertedPoints(myPoints: MyPoint[]) {
+        /** edge에 연결된 점은 빼고 구하기,
+         * 연결된 라인이 하나밖에 없다면 아무하고도 연결된 점이 아니기 때문에 위치를 구할 수 없음.  */
+        myPoints.forEach((point) => {
+            if (
+                point.connectedLines.find((connectedPoint) => {
+                    return connectedPoint.pos === 'edge';
+                }) === undefined &&
+                point.connectedLines.length > 1
+            ) {
+                this.findStartEndPoint(point);
+            }
+        });
+
+        console.log(this.points.map((point) => point.updated));
+
+        /** edge하고 연결된 점들만 구하기 */
+        myPoints.forEach((point) => {
+            if (
+                point.connectedLines.find((connectedPoint) => {
+                    return connectedPoint.pos === 'edge';
+                }) !== undefined
+            ) {
+                this.findEdgePoint(point);
+            }
+        });
+        console.log(this.points.map((point) => point.updated));
+
+        /** 양 끝점은 아무하고도 연결되지 않고, edge에는 연결된 라인이 있을때 구하기 */
+        this.lines.forEach((line) => {
+            console.log(
+                line.myPoints.every((myPoint) => {
+                    myPoint.updated === false;
+                })
+            );
+            if (
+                line.myPoints.every((myPoint) => {
+                    myPoint.updated === false;
+                })
+            )
+                console.log(line);
+        });
+
+        /** 재귀 결정 조건 */
+        if (
+            this.points
+                .map((point) => point.updated)
+                .every((updated) => updated === true)
+        )
+            return;
+    }
+
+    /** 재귀를 통해서, 연결된 포인트들만 위치를 업데이트 할 수 있음. 반복문으로 할 시 연결되지 않은 점들도 업데이트 할 가능성.
+     * 일단 시작, 끝으로 연결된 점들만 업데이트
+     */
+    public newUpdateConvertedPosition(point: MyPoint) {
+        point.connectedLines.forEach((connectedLine) => {
+            if (connectedLine.pos !== 'edge') {
+                if (
+                    !(connectedLine.point as MyPoint).updated &&
+                    connectedLine.line.updatedConvertedLength
+                ) {
+                    (connectedLine.point as MyPoint).convertedPosition.copy(
+                        this.findConverted2ndPosition(
+                            point,
+                            connectedLine.pos,
+                            connectedLine.line
+                        )
+                    );
+                    (connectedLine.point as MyPoint).updated = true;
+                    this.newUpdateConvertedPosition(
+                        connectedLine.point as MyPoint
+                    );
+                }
+            }
+        });
+    }
+
+    /** 라인의 한쪽 점 기준으로 다른 끝 점의 converted position을 계산하는 함수  */
+    public findStartEndPoint(point: MyPoint) {
         point.connectedLines.forEach((connectedPoint) => {
             if (connectedPoint.pos !== 'edge') {
                 if (
@@ -850,56 +953,27 @@ export class LineService {
                         )
                     );
                     (connectedPoint.point as MyPoint).updated = true;
-                    this.updateConvertedPoints(connectedPoint.point as MyPoint);
-                }
-            } else {
-                // point가 edge인경우 다시 생각해보기
-                if (connectedPoint.line.updatedConvertedLength) {
-                    console.log(connectedPoint.line);
-                    let point0ToEdgeDistance = (connectedPoint.point as Vector3)
-                        .clone()
-                        .distanceTo(connectedPoint.line.myPoints[0].position);
-                    let point0Topoint1Distance =
-                        connectedPoint.line.myPoints[0].position.distanceTo(
-                            connectedPoint.line.myPoints[1].position
-                        );
-                    let offset = math.round(
-                        point0ToEdgeDistance / point0Topoint1Distance,
-                        1
-                    );
-                    connectedPoint.line.myPoints[0].updated = true;
-                    connectedPoint.line.myPoints[0].convertedPosition.copy(
-                        this.findConverted2ndPosition(
-                            point,
-                            'edge',
-                            connectedPoint.line,
-                            -offset
-                        )
-                    );
-                    connectedPoint.line.myPoints[1].updated = true;
-                    connectedPoint.line.myPoints[1].convertedPosition.copy(
-                        this.findConverted2ndPosition(
-                            connectedPoint.line.myPoints[0],
-                            'start',
-                            connectedPoint.line
-                        )
-                    );
                 }
             }
         });
+    }
 
-        /** 엣지에 연결된 점의 입체공간 점 계산산 */
+    /** edge에 연결된 점의 위치를 연결된 line을 통해 구한 후, 다른 한쪽도 한번에 정해줌(안한다면 대각선 등 다른 방향의 직선이 나옴) */
+    public findEdgePoint(point: MyPoint) {
         point.connectedLines.forEach((connectedLine) => {
-            connectedLine.line.connectedEdgeLines.forEach((edgeLine) => {
+            if (connectedLine.pos === 'edge') {
                 if (
-                    !edgeLine.point.updated &&
-                    connectedLine.line.updatedConvertedLength
+                    !point.updated &&
+                    connectedLine.line.myPoints[0].updated &&
+                    connectedLine.line.myPoints[1].updated
                 ) {
                     let startPosition =
                         connectedLine.line.myPoints[0].position.clone();
                     let endPosition =
                         connectedLine.line.myPoints[1].position.clone();
-                    let targetPosition = edgeLine.point.position.clone();
+                    let targetPosition = (
+                        connectedLine.point as Vector3
+                    ).clone();
                     let offset = math.round(
                         math.abs(
                             startPosition.distanceTo(targetPosition) /
@@ -907,7 +981,7 @@ export class LineService {
                         ),
                         1
                     );
-                    edgeLine.point.convertedPosition.copy(
+                    point.convertedPosition.copy(
                         this.findConverted2ndPosition(
                             connectedLine.line.myPoints[0],
                             'edge',
@@ -915,21 +989,46 @@ export class LineService {
                             offset
                         )
                     );
-                    edgeLine.point.updated = true;
-                    this.updateConvertedPoints(edgeLine.point);
+                    point.updated = true;
+                    this.findStartEndPoint(point);
                 }
-            });
+            }
         });
+    }
 
-        /** 아무하고도 연결되지 않은 점의 입체공간 점 계산  */
-
-        /** 재귀 결정 조건 */
-        if (
-            this.points
-                .map((point) => point.updated)
-                .every((updated) => updated === true)
-        )
-            return;
+    /** 양 끝점은 연결되어있지 않고, edge에 연결된 line이 다른 line과 연결되어있는 경우의 line의 양 끝 점을 구하는 함수 */
+    public findNotConnectedLine(point: MyPoint) {
+        point.connectedLines.forEach((connectedLine) => {
+            if (connectedLine.pos === 'edge') {
+                if (
+                    !connectedLine.line.myPoints[0].updated &&
+                    !connectedLine.line.myPoints[1].updated
+                ) {
+                }
+                let startPosition =
+                    connectedLine.line.myPoints[0].position.clone();
+                let endPosition =
+                    connectedLine.line.myPoints[1].position.clone();
+                let targetPosition = (connectedLine.point as Vector3).clone();
+                let offset = math.round(
+                    math.abs(
+                        startPosition.distanceTo(targetPosition) /
+                            startPosition.distanceTo(endPosition)
+                    ),
+                    1
+                );
+                connectedLine.line.myPoints[0].convertedPosition.copy(
+                    this.findConverted2ndPosition(
+                        connectedLine.line.myPoints[0],
+                        'edge',
+                        connectedLine.line,
+                        -offset
+                    )
+                );
+                connectedLine.line.myPoints[0].updated = true;
+                this.findStartEndPoint(connectedLine.line.myPoints[0]);
+            }
+        });
     }
 
     private getLineByName(name: string): MyLine | undefined {
