@@ -22,7 +22,7 @@ import {
     Vector3,
 } from 'three';
 import * as math from 'mathjs';
-import { LineService } from '../line-service/line-service';
+import { LineService } from '../../line-service/line-service';
 
 export class MyLine extends Line {
     public points: Vector3[];

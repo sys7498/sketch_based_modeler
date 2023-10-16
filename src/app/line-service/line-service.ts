@@ -297,13 +297,18 @@ export class LineService {
             line.connectedEdgeLines.forEach((edgeLine) => {
                 edgeLine.line.myPoints.forEach((myPoint: MyPoint) => {
                     if (myPoint.position.equals(edgeLine.position)) {
-                        myPoint.connectedLines.unshift({
+                        let newData: PointConnectedLine = {
                             point: myPoint.position.clone(),
                             line: line,
                             pos: 'edge',
-                        });
-                        edgeLine.point = myPoint;
-                        return;
+                        };
+                        if (
+                            myPoint.connectedLines.find((connectedLine) => {
+                                return connectedLine.pos === 'edge';
+                            }) === undefined
+                        ) {
+                            myPoint.connectedLines.unshift(newData);
+                        }
                     }
                 });
             });
@@ -666,6 +671,7 @@ export class LineService {
         this.clustering();
         /** 점 위치 찾기 */
         this.points[0].convertedPosition.set(100, 100, 100);
+        this.points[0].updated = true;
         /** 시작또는 끝점으로 계속 연결된 점들만 찾음 */
         for (let i = 0; i < 10; i++) {
             if (
@@ -681,7 +687,14 @@ export class LineService {
             ) {
                 this.loopUpdateConvertedPosition();
             }
+            console.log(
+                this.lines.filter(
+                    (line) => line.updatedConvertedLength === false
+                )
+            );
+            console.log(this.points.filter((point) => point.updated === false));
         }
+
         /** edge 연결된 점들로 찾기 
         this.lines.forEach((line) => {
             if (line.connectedEdgeLines.length > 0) {
@@ -709,12 +722,13 @@ export class LineService {
                     }
                 });
             }
-        });*/
+        });
         console.log(
             this.lines.filter((line) => line.updatedConvertedLength === false)
         );
         console.log(this.points.filter((point) => point.updated === false));
 
+        */
         this.nowDimension = '3D';
 
         this.lines.forEach((line) => {
@@ -727,56 +741,6 @@ export class LineService {
             this._sceneGraph.lines.add(nl);
         });
         this._sceneGraph.cameraSet.changeCamera('perspective');
-    }
-
-    /**
-     * edge에 연결된 직선도 같이 찾아보기 해야됨.
-     * @param targetLine
-     */
-    public udpateSegmentConvertedLength() {
-        let sameAxisLines: MyLine[][] = [[], [], []];
-        this.lines.forEach((line) => {
-            if (line.axis?.equals(new Vector3(1, 0, 0))) {
-                sameAxisLines[0].push(line);
-            } else if (line.axis?.equals(new Vector3(0, 1, 0))) {
-                sameAxisLines[1].push(line);
-            } else {
-                sameAxisLines[2].push(line);
-            }
-        });
-        this.findLength(sameAxisLines[0]);
-        this.findLength(sameAxisLines[1]);
-        this.findLength(sameAxisLines[2]);
-    }
-
-    public findLength(targetLineArray: MyLine[]) {
-        if (
-            targetLineArray.every(
-                (line) => line.updatedConvertedLength === false
-            )
-        ) {
-            this.defineConvertedLength(targetLineArray[0]);
-        }
-        /** 같은 길이의 세그먼트를 찾은 후, 그 세그먼트는 모두 같은 길이로 변경(어떻게든 양끝점이 연결된 세그먼트의 경우를 같은 길이의 세그먼트라고 생각) */
-        for (let targetLine of targetLineArray) {
-            for (let newLine of targetLineArray) {
-                if (newLine !== targetLine && !newLine.updatedConvertedLength) {
-                    if (
-                        this.checkIsConnected(
-                            targetLine.myPoints[0],
-                            newLine.myPoints[0]
-                        ) &&
-                        this.checkIsConnected(
-                            targetLine.myPoints[1],
-                            newLine.myPoints[1]
-                        )
-                    ) {
-                        newLine.convertedLength = targetLine.convertedLength;
-                        newLine.updatedConvertedLength = true;
-                    }
-                }
-            }
-        }
     }
 
     public checkIsConnected(point1: MyPoint, point2: MyPoint) {
@@ -799,52 +763,46 @@ export class LineService {
     }
 
     public updateConvertedLength() {
-        let sameAxisLines: MyLine[][] = [[], [], []];
         let targetLines = this.lines.filter(
             (line) => line.updatedConvertedLength === false
         );
-        targetLines.forEach((line) => {
-            if (line.axis?.equals(new Vector3(1, 0, 0))) {
-                sameAxisLines[0].push(line);
-            } else if (line.axis?.equals(new Vector3(0, 1, 0))) {
-                sameAxisLines[1].push(line);
-            } else {
-                sameAxisLines[2].push(line);
-            }
-        });
-        sameAxisLines[0][0].convertedLength = 100;
-        sameAxisLines[0][0].updatedConvertedLength = true;
-        this.newUpdateLength(sameAxisLines[0]);
-        sameAxisLines[1][0].convertedLength = 100;
-        sameAxisLines[1][0].updatedConvertedLength = true;
-        this.newUpdateLength(sameAxisLines[1]);
-        sameAxisLines[2][0].convertedLength = 100;
-        sameAxisLines[2][0].updatedConvertedLength = true;
-        this.newUpdateLength(sameAxisLines[2]);
+        this.newUpdateLength(targetLines);
     }
 
     public newUpdateLength(targetLines: MyLine[]) {
+        if (
+            targetLines.every((line) => line.updatedConvertedLength === false)
+        ) {
+            targetLines.forEach((targetLine) => {
+                this.updateEdgeLineConvertedLength(targetLine);
+            });
+        }
+        if (
+            targetLines.every((line) => line.updatedConvertedLength === false)
+        ) {
+            this.calculateLengthBy2D(targetLines[0]);
+        }
         /** 같은 길이의 세그먼트를 찾은 후, 그 세그먼트는 모두 같은 길이로 변경(어떻게든 양끝점이 연결된 세그먼트의 경우를 같은 길이의 세그먼트라고 생각) */
         for (let targetLine of targetLines) {
-            for (let newLine of targetLines) {
+            for (let checkLine of this.lines) {
                 if (
-                    newLine !== targetLine &&
-                    newLine.axis!.equals(targetLine.axis!) &&
-                    targetLine.updatedConvertedLength &&
-                    !newLine.updatedConvertedLength
+                    checkLine !== targetLine &&
+                    checkLine.axis!.equals(targetLine.axis!) &&
+                    !targetLine.updatedConvertedLength &&
+                    checkLine.updatedConvertedLength
                 ) {
                     if (
                         this.checkIsConnected(
                             targetLine.myPoints[0],
-                            newLine.myPoints[0]
+                            checkLine.myPoints[0]
                         ) &&
                         this.checkIsConnected(
                             targetLine.myPoints[1],
-                            newLine.myPoints[1]
+                            checkLine.myPoints[1]
                         )
                     ) {
-                        newLine.convertedLength = targetLine.convertedLength;
-                        newLine.updatedConvertedLength = true;
+                        targetLine.convertedLength = checkLine.convertedLength;
+                        targetLine.updatedConvertedLength = true;
                     }
                 }
             }
@@ -859,8 +817,117 @@ export class LineService {
             this.lines[0].myPoints[1].position
         );
         let offset = target2dLength / standard2dLength;
+        console.log(this.lines[0].convertedLength * offset);
         targetLine.convertedLength = this.lines[0].convertedLength * offset;
         targetLine.updatedConvertedLength = true;
+    }
+
+    public updateEdgeLineConvertedLength(line: MyLine) {
+        /**
+         * 우선 한쪽 끝이 edge로 연결되어있는지 확인
+         * edge로 연결된 라인
+         * 양 끝에 연결된 line은 무조건 그 line의 양 끝점이 업데이트 되어있어야함.
+         * 그렇지 않으면 업데이트 불가능
+         */
+
+        // 한쪽 끝이라도 edge로 연결되어있는지 확인
+        let isEdgeLine = false;
+        line.myPoints.forEach((myPoint) => {
+            let check = myPoint.connectedLines.find((connectedLine) => {
+                return connectedLine.pos === 'edge';
+            });
+            if (check !== undefined) isEdgeLine = true;
+        });
+
+        // edge로 연결되어있는 line이 아니라면 return false
+        if (!isEdgeLine) return;
+
+        /**
+         * edge로 연결되어있는 line이라면 어떤 유형인지 확인.
+         * 일단, 같은 방향으로 뻗는 line이 있는지 확인하면 됨.
+         * 없다면 직선 사이 거리로 구할 수 없는 line.
+         * 다음 loop을 기다려봐야함.
+         */
+
+        // 같은 방향의 line이 있다면 쌍을 보관하는 이중MyLine어레이
+        let sameAxisLineArray: MyLine[][] = [];
+        line.myPoints[0].connectedLines.forEach((connectedLine0) => {
+            line.myPoints[1].connectedLines.forEach((connectedLine1) => {
+                if (
+                    connectedLine0.line.axis!.equals(
+                        connectedLine1.line.axis!
+                    ) &&
+                    connectedLine0.line !== line &&
+                    connectedLine1.line !== line &&
+                    connectedLine0.line.myPoints.every((myPoint) => {
+                        myPoint.updated;
+                    }) &&
+                    connectedLine1.line.myPoints.every((myPoint) => {
+                        myPoint.updated;
+                    })
+                ) {
+                    sameAxisLineArray.push([
+                        connectedLine0.line,
+                        connectedLine1.line,
+                    ]);
+                }
+            });
+        });
+
+        /**
+         * 조건을 만족하는 지 확인해야함.
+         * sameAxisLineArray가 비어있다면 직선 사이 거리로 구할 수 없는 line.
+         */
+        if (sameAxisLineArray.length === 0) return;
+
+        /** 거리를 구해보자 */
+        let startLine = sameAxisLineArray[0][0];
+        let endLine = sameAxisLineArray[0][1];
+        const distance = this.distanceBetweenTwoLines(
+            startLine.myPoints[0].convertedPosition,
+            startLine.myPoints[1].convertedPosition,
+            endLine.myPoints[0].convertedPosition,
+            endLine.myPoints[1].convertedPosition
+        );
+        console.log(distance);
+        line.convertedLength = distance;
+        line.updatedConvertedLength = true;
+    }
+
+    public distanceBetweenTwoLines(
+        line1Start: Vector3,
+        line1End: Vector3,
+        line2Start: Vector3,
+        line2End: Vector3
+    ) {
+        const dir1 = new Vector3().copy(line1End).sub(line1Start);
+        const dir2 = new Vector3().copy(line2End).sub(line2Start);
+        const startPoint1 = new Vector3().copy(line1Start);
+        const startPoint2 = new Vector3().copy(line2Start);
+        console.log(dir1, dir2);
+
+        // 두 직선의 방향 벡터 간의 내적을 계산
+        const dot = dir1.dot(dir2);
+
+        // 두 직선의 거리 벡터
+        const distVec = new Vector3().copy(startPoint1).sub(startPoint2);
+
+        // 두 직선 간의 거리 벡터를 두 직선의 방향 벡터 내적으로 나누어 수직 거리 계산
+        const t =
+            (distVec.dot(dir1) - distVec.dot(dir2) * dot) /
+            (dir1.lengthSq() - dot * dot);
+        const s =
+            (distVec.dot(dir2) - distVec.dot(dir1) * dot) /
+            (dir1.lengthSq() - dot * dot);
+
+        // 수직 거리 계산
+        const distanceVec = distVec
+            .clone()
+            .add(dir1.clone().multiplyScalar(t))
+            .sub(dir2.clone().multiplyScalar(s));
+        const distance = distanceVec.length();
+
+        return distance;
     }
 
     /** 입체공간 상의 위치관계로 길이를 구할 수 있을 때 3d 공간 상 line 들의 사이 거리를 통해 line의 길이를 정함 */
@@ -963,13 +1030,7 @@ export class LineService {
     }
 
     public loopUpdateConvertedPosition() {
-        let targetPoints = this.points.filter(
-            (point) => point.updated === false
-        );
-        targetPoints.find((point) => {
-            return point === this.points[0];
-        })!.updated = true;
-        for (let targetPoint of targetPoints) {
+        for (let targetPoint of this.points) {
             targetPoint.connectedLines.forEach((connectedLine) => {
                 if (connectedLine.line.updatedConvertedLength) {
                     if (connectedLine.pos === 'edge' && !targetPoint.updated) {
