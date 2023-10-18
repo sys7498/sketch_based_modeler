@@ -25,8 +25,6 @@ import {
 } from 'three';
 import * as math from 'mathjs';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
-import { connect } from 'rxjs';
-import { ConnectedOverlayPositionChange } from '@angular/cdk/overlay';
 
 export class Layer {
     public invisibleLayer = 0;
@@ -36,31 +34,29 @@ export class Layer {
 
 export class MyLine extends Line {
     public axis: Vector3 | null;
+    public order: number;
     public points: Vector3[];
     public myPoints: MyPoint[];
     public a: number;
-    public connectedStartLine: MyLine | null;
-    public connectedEndLine: MyLine | null;
     public connectedEdgeLines: any[];
     public label: CSS2DObject | null;
     public convertedLength: number;
-    public updatedConvertedLength: boolean;
-    constructor(name: string, startPoint: Vector3) {
+    public isupdatedCL: boolean;
+    constructor(order: number, startPoint: Vector3) {
         super(
             new BufferGeometry().setFromPoints([startPoint]),
             new LineBasicMaterial({ color: 0x000000, linewidth: 3 })
         );
         this.axis = null;
-        this.name = name;
+        this.order = order;
+        this.name = `line_${order}`;
         this.points = [startPoint];
         this.myPoints = [];
         this.a = 0;
-        this.connectedStartLine = null;
-        this.connectedEndLine = null;
         this.connectedEdgeLines = [];
         this.label = null;
         this.convertedLength = 100;
-        this.updatedConvertedLength = false;
+        this.isupdatedCL = false;
     }
 
     public makeLabel() {
@@ -71,25 +67,27 @@ export class MyLine extends Line {
         this.label.position.copy(
             this.points[0].clone().lerp(this.points[1], 0.5)
         );
-        this.add(this.label);
+        //this.add(this.label);
     }
 }
 
 export class MyPoint extends Mesh {
-    public convertedPosition: Vector3;
+    public order: number;
+    public convertedPosition: Vector3 | null;
+
     public label: CSS2DObject | null;
     public connectedLines: PointConnectedLine[];
-    public updated: boolean;
-    constructor(name: string) {
+    constructor(order: number) {
         super(
             new SphereGeometry(0.5),
             new MeshBasicMaterial({ color: 0xff0000 })
         );
-        this.name = name;
-        this.convertedPosition = new Vector3();
+        this.order = order;
+        this.name = `point_${order}`;
+        this.convertedPosition = null;
+
         this.label = null;
         this.connectedLines = [];
-        this.updated = false;
     }
     public makeLabel() {
         let div = document.createElement('div');
@@ -107,6 +105,17 @@ export interface PointConnectedLine {
     point: MyPoint | Vector3; // MyPoint가 없다면 위치라도 저장해둬야함.
 }
 
+export interface variable {
+    value: number;
+    isUpdated: boolean;
+    equations: equation[];
+}
+
+export interface equation {
+    equation: string;
+    parameters: any[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class LineService {
     public nowDimension: '2D' | '3D';
@@ -116,6 +125,7 @@ export class LineService {
     private _lastLinePoint: Vector3;
     public lines: MyLine[];
     public points: MyPoint[];
+    public _variables: variable[][]; // 0: x, 1: y, 2: z, 3: l
     private _rayCaster: Raycaster;
     private _viewportDiv: HTMLDivElement;
     private _eventHandler: EventHandler;
@@ -133,6 +143,10 @@ export class LineService {
         this._lastLinePoint = new Vector3(0, 0, 10);
         this.lines = [];
         this.points = [];
+
+        // variables
+        this._variables = [[], [], [], []];
+
         this._rayCaster = new Raycaster();
         this._rayCaster.params.Line!.threshold = 0.5;
         this.scale = 0;
@@ -184,7 +198,7 @@ export class LineService {
 
     public drawLineStart() {
         this._lastLinePoint = this._selection.mouseWorldPosition;
-        let newLine = new MyLine(`${this.lines.length}`, this._lastLinePoint);
+        let newLine = new MyLine(this.lines.length, this._lastLinePoint);
         this.lines.push(newLine);
         this._sceneGraph.lines.add(newLine);
     }
@@ -213,7 +227,7 @@ export class LineService {
             if (foundPoint !== undefined) {
                 line.myPoints.push(foundPoint);
             } else {
-                let newPoint = new MyPoint(`point_${this.points.length}`);
+                let newPoint = new MyPoint(this.points.length);
                 newPoint.position.copy(point);
                 newPoint.makeLabel();
                 this._sceneGraph.misc.add(newPoint);
@@ -308,6 +322,7 @@ export class LineService {
                             }) === undefined
                         ) {
                             myPoint.connectedLines.unshift(newData);
+                            edgeLine.point = myPoint;
                         }
                     }
                 });
@@ -344,21 +359,6 @@ export class LineService {
         minPoint = this.lines[minLineIndex].points[minLinePointIndex].clone();
         if (minPointDistance < this.scale / 2) {
             point = minPoint.clone();
-            if (pos === 'start') {
-                this.lines[this.lines.length - 1].connectedStartLine =
-                    this.lines[minLineIndex];
-            } else {
-                this.lines[this.lines.length - 1].connectedEndLine =
-                    this.lines[minLineIndex];
-            }
-            if (minLinePointIndex === 0) {
-                this.lines[minLineIndex].connectedStartLine =
-                    this.lines[this.lines.length - 1];
-            } else {
-                this.lines[minLineIndex].connectedEndLine =
-                    this.lines[this.lines.length - 1];
-            }
-
             console.log('snap to vertex!');
             return point;
         }
@@ -385,13 +385,6 @@ export class LineService {
 
         if (minLineDistance < this.scale / 3) {
             point = minLinePoint.clone();
-            if (pos === 'start') {
-                this.lines[this.lines.length - 1].connectedStartLine =
-                    this.lines[minEdgeLineIndex];
-            } else {
-                this.lines[this.lines.length - 1].connectedEndLine =
-                    this.lines[minEdgeLineIndex];
-            }
             this.lines[minEdgeLineIndex].connectedEdgeLines.push({
                 line: this.lines[this.lines.length - 1],
                 position: point.clone(),
@@ -421,16 +414,6 @@ export class LineService {
             });
             if (intersectedLine) intersectedLine.visible = false;
         }
-    }
-
-    public consoleInfo() {
-        this.lines.forEach((line) => {
-            console.log(`
-                시작점라인: ${line.connectedStartLine},
-                끝점라인: ${line.connectedEndLine},
-                선연결라인: ${line.connectedEdgeLines},
-                `);
-        });
     }
 
     /** k-means++ 방법 적용 */
@@ -545,7 +528,6 @@ export class LineService {
                 )
             );
         }.bind(this);
-
         clusteredPoints.sort(sortFunction);
         for (let c = 0; c < clusteredPoints.length; c++) {
             clusteredPoints[c].forEach((cluster) => {
@@ -584,10 +566,6 @@ export class LineService {
                         let tempMyPoint = line.myPoints[0];
                         line.myPoints[0] = line.myPoints[1];
                         line.myPoints[1] = tempMyPoint;
-
-                        let tempConnectedStartLine = line.connectedStartLine;
-                        line.connectedStartLine = line.connectedEndLine;
-                        line.connectedEndLine = tempConnectedStartLine;
                     }
                 } else if (line.axis?.equals(new Vector3(0, 1, 0))) {
                     if (line.points[0].x > line.points[1].x) {
@@ -598,10 +576,6 @@ export class LineService {
                         let tempMyPoint = line.myPoints[0];
                         line.myPoints[0] = line.myPoints[1];
                         line.myPoints[1] = tempMyPoint;
-
-                        let tempConnectedStartLine = line.connectedStartLine;
-                        line.connectedStartLine = line.connectedEndLine;
-                        line.connectedEndLine = tempConnectedStartLine;
                     }
                 } else {
                     if (line.points[0].x > line.points[1].x) {
@@ -612,10 +586,6 @@ export class LineService {
                         let tempMyPoint = line.myPoints[0];
                         line.myPoints[0] = line.myPoints[1];
                         line.myPoints[1] = tempMyPoint;
-
-                        let tempConnectedStartLine = line.connectedStartLine;
-                        line.connectedStartLine = line.connectedEndLine;
-                        line.connectedEndLine = tempConnectedStartLine;
                     }
                 }
 
@@ -669,72 +639,17 @@ export class LineService {
 
     public convertTo3D() {
         this.clustering();
-        /** 점 위치 찾기 */
-        this.points[0].convertedPosition.set(100, 100, 100);
-        this.points[0].updated = true;
-        /** 시작또는 끝점으로 계속 연결된 점들만 찾음 */
-        for (let i = 0; i < 10; i++) {
-            if (
-                this.lines.filter(
-                    (line) => line.updatedConvertedLength === false
-                ).length > 0
-            ) {
-                this.updateConvertedLength();
-            }
-            if (
-                this.points.filter((point) => point.updated === false).length >
-                0
-            ) {
-                this.loopUpdateConvertedPosition();
-            }
-            console.log(
-                this.lines.filter(
-                    (line) => line.updatedConvertedLength === false
-                )
-            );
-            console.log(this.points.filter((point) => point.updated === false));
-        }
-
-        /** edge 연결된 점들로 찾기 
-        this.lines.forEach((line) => {
-            if (line.connectedEdgeLines.length > 0) {
-                line.connectedEdgeLines.forEach((edgeLine) => {
-                    if (
-                        !edgeLine.point.updated &&
-                        edgeLine.line.updatedConvertedLength
-                    ) {
-                        let startPoint = line.myPoints[0].position.clone();
-                        let endPoint = line.myPoints[1].position.clone();
-                        let offsetPoint = edgeLine.position.clone();
-                        let offset =
-                            offsetPoint.distanceTo(startPoint) /
-                            startPoint.distanceTo(endPoint);
-                        edgeLine.point.convertedPosition.copy(
-                            this.findConverted2ndPosition(
-                                line.myPoints[0],
-                                'edge',
-                                line,
-                                offset
-                            )
-                        );
-                        edgeLine.point.updated = true;
-                        this.newUpdateConvertedPosition(edgeLine.point);
-                    }
-                });
-            }
-        });
-        console.log(
-            this.lines.filter((line) => line.updatedConvertedLength === false)
-        );
-        console.log(this.points.filter((point) => point.updated === false));
-
-        */
+        this.setVariables();
+        this.setEquations();
+        console.log('result', this._variables);
         this.nowDimension = '3D';
-
+        this.findValues();
+        console.log('result', this._variables);
+        this.setConvertedPosition();
         this.lines.forEach((line) => {
             let nlG = new BufferGeometry().setFromPoints(
                 line.myPoints.map((myPoint) =>
-                    myPoint.convertedPosition.clone()
+                    myPoint.convertedPosition!.clone()
                 )
             );
             let nl = new Line(nlG, new LineBasicMaterial({ color: 0x000000 }));
@@ -743,338 +658,391 @@ export class LineService {
         this._sceneGraph.cameraSet.changeCamera('perspective');
     }
 
-    public checkIsConnected(point1: MyPoint, point2: MyPoint) {
-        let point1ConnectedLine = point1.connectedLines.map(
-            (connectedPoint) => connectedPoint.line
-        );
-        let point2ConnectedLine = point2.connectedLines.map(
-            (connectedPoint) => connectedPoint.line
-        );
-
-        if (
-            point1ConnectedLine.filter((line) =>
-                point2ConnectedLine.includes(line)
-            ).length > 0
-        ) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public updateConvertedLength() {
-        let targetLines = this.lines.filter(
-            (line) => line.updatedConvertedLength === false
-        );
-        this.newUpdateLength(targetLines);
-    }
-
-    public newUpdateLength(targetLines: MyLine[]) {
-        if (
-            targetLines.every((line) => line.updatedConvertedLength === false)
-        ) {
-            targetLines.forEach((targetLine) => {
-                this.updateEdgeLineConvertedLength(targetLine);
-            });
-        }
-        if (
-            targetLines.every((line) => line.updatedConvertedLength === false)
-        ) {
-            this.calculateLengthBy2D(targetLines[0]);
-        }
-        /** 같은 길이의 세그먼트를 찾은 후, 그 세그먼트는 모두 같은 길이로 변경(어떻게든 양끝점이 연결된 세그먼트의 경우를 같은 길이의 세그먼트라고 생각) */
-        for (let targetLine of targetLines) {
-            for (let checkLine of this.lines) {
-                if (
-                    checkLine !== targetLine &&
-                    checkLine.axis!.equals(targetLine.axis!) &&
-                    !targetLine.updatedConvertedLength &&
-                    checkLine.updatedConvertedLength
-                ) {
-                    if (
-                        this.checkIsConnected(
-                            targetLine.myPoints[0],
-                            checkLine.myPoints[0]
-                        ) &&
-                        this.checkIsConnected(
-                            targetLine.myPoints[1],
-                            checkLine.myPoints[1]
-                        )
-                    ) {
-                        targetLine.convertedLength = checkLine.convertedLength;
-                        targetLine.updatedConvertedLength = true;
-                    }
-                }
-            }
-        }
-    }
-    /** 입체공간 상의 위치 관계로 길이를 구할 수 없을 때 2d 공간 상 점들의 사이 거리를 통해 line의 길이를 정함 */
-    public calculateLengthBy2D(targetLine: MyLine) {
-        let target2dLength = targetLine.myPoints[0].position.distanceTo(
-            targetLine.myPoints[1].position
-        );
-        let standard2dLength = this.lines[0].myPoints[0].position.distanceTo(
-            this.lines[0].myPoints[1].position
-        );
-        let offset = target2dLength / standard2dLength;
-        console.log(this.lines[0].convertedLength * offset);
-        targetLine.convertedLength = this.lines[0].convertedLength * offset;
-        targetLine.updatedConvertedLength = true;
-    }
-
-    public updateEdgeLineConvertedLength(line: MyLine) {
-        /**
-         * 우선 한쪽 끝이 edge로 연결되어있는지 확인
-         * edge로 연결된 라인
-         * 양 끝에 연결된 line은 무조건 그 line의 양 끝점이 업데이트 되어있어야함.
-         * 그렇지 않으면 업데이트 불가능
-         */
-
-        // 한쪽 끝이라도 edge로 연결되어있는지 확인
-        let isEdgeLine = false;
-        line.myPoints.forEach((myPoint) => {
-            let check = myPoint.connectedLines.find((connectedLine) => {
-                return connectedLine.pos === 'edge';
-            });
-            if (check !== undefined) isEdgeLine = true;
-        });
-
-        // edge로 연결되어있는 line이 아니라면 return false
-        if (!isEdgeLine) return;
-
-        /**
-         * edge로 연결되어있는 line이라면 어떤 유형인지 확인.
-         * 일단, 같은 방향으로 뻗는 line이 있는지 확인하면 됨.
-         * 없다면 직선 사이 거리로 구할 수 없는 line.
-         * 다음 loop을 기다려봐야함.
-         */
-
-        // 같은 방향의 line이 있다면 쌍을 보관하는 이중MyLine어레이
-        let sameAxisLineArray: MyLine[][] = [];
-        line.myPoints[0].connectedLines.forEach((connectedLine0) => {
-            line.myPoints[1].connectedLines.forEach((connectedLine1) => {
-                if (
-                    connectedLine0.line.axis!.equals(
-                        connectedLine1.line.axis!
-                    ) &&
-                    connectedLine0.line !== line &&
-                    connectedLine1.line !== line &&
-                    connectedLine0.line.myPoints.every((myPoint) => {
-                        myPoint.updated;
-                    }) &&
-                    connectedLine1.line.myPoints.every((myPoint) => {
-                        myPoint.updated;
-                    })
-                ) {
-                    sameAxisLineArray.push([
-                        connectedLine0.line,
-                        connectedLine1.line,
-                    ]);
-                }
-            });
-        });
-
-        /**
-         * 조건을 만족하는 지 확인해야함.
-         * sameAxisLineArray가 비어있다면 직선 사이 거리로 구할 수 없는 line.
-         */
-        if (sameAxisLineArray.length === 0) return;
-
-        /** 거리를 구해보자 */
-        let startLine = sameAxisLineArray[0][0];
-        let endLine = sameAxisLineArray[0][1];
-        const distance = this.distanceBetweenTwoLines(
-            startLine.myPoints[0].convertedPosition,
-            startLine.myPoints[1].convertedPosition,
-            endLine.myPoints[0].convertedPosition,
-            endLine.myPoints[1].convertedPosition
-        );
-        console.log(distance);
-        line.convertedLength = distance;
-        line.updatedConvertedLength = true;
-    }
-
-    public distanceBetweenTwoLines(
-        line1Start: Vector3,
-        line1End: Vector3,
-        line2Start: Vector3,
-        line2End: Vector3
-    ) {
-        const dir1 = new Vector3().copy(line1End).sub(line1Start);
-        const dir2 = new Vector3().copy(line2End).sub(line2Start);
-        const startPoint1 = new Vector3().copy(line1Start);
-        const startPoint2 = new Vector3().copy(line2Start);
-        console.log(dir1, dir2);
-
-        // 두 직선의 방향 벡터 간의 내적을 계산
-        const dot = dir1.dot(dir2);
-
-        // 두 직선의 거리 벡터
-        const distVec = new Vector3().copy(startPoint1).sub(startPoint2);
-
-        // 두 직선 간의 거리 벡터를 두 직선의 방향 벡터 내적으로 나누어 수직 거리 계산
-        const t =
-            (distVec.dot(dir1) - distVec.dot(dir2) * dot) /
-            (dir1.lengthSq() - dot * dot);
-        const s =
-            (distVec.dot(dir2) - distVec.dot(dir1) * dot) /
-            (dir1.lengthSq() - dot * dot);
-
-        // 수직 거리 계산
-        const distanceVec = distVec
-            .clone()
-            .add(dir1.clone().multiplyScalar(t))
-            .sub(dir2.clone().multiplyScalar(s));
-        const distance = distanceVec.length();
-
-        return distance;
-    }
-
-    /** 입체공간 상의 위치관계로 길이를 구할 수 있을 때 3d 공간 상 line 들의 사이 거리를 통해 line의 길이를 정함 */
-    public calculateLengthBy3D(targetLine: MyLine) {
-        let startPositionConnectedLines =
-            targetLine.myPoints[0].connectedLines.map(
-                (connectedLine) => connectedLine.line
-            );
-        let endPositionConnectedLines =
-            targetLine.myPoints[1].connectedLines.map(
-                (connectedLine) => connectedLine.line
-            );
-    }
-
-    /** 변환된 길이를 정해주는 함수. (더는 길이를 정할 수 없을 떄 사용하는 함수) */
-    public defineConvertedLength(
-        targetLine: MyLine,
-        option: 'auto' | 'edge' = 'auto'
-    ) {
-        if (option === 'auto') {
-            let target2dLength = targetLine.myPoints[0].position.distanceTo(
-                targetLine.myPoints[1].position
-            );
-            let standard2dLength =
-                this.lines[0].myPoints[0].position.distanceTo(
-                    this.lines[0].myPoints[1].position
-                );
-            let offset = target2dLength / standard2dLength;
-            targetLine.convertedLength = this.lines[0].convertedLength * offset;
-            targetLine.updatedConvertedLength = true;
-        } else {
-            /** 양 끝 점이 line과 연결되어있는지를 확인 */
-            let startLine = targetLine.myPoints[0].connectedLines.find(
-                (connectedLine) => connectedLine.pos === 'edge'
-            )!.line;
-            let endLine = targetLine.myPoints[1].connectedLines.find(
-                (connectedLine) => connectedLine.pos === 'edge'
-            )!.line;
-        }
-    }
-
-    /** 다른 한쪽 끝의 입체공간 포지션을 구하는 함수 */
-    public findConverted2ndPosition(
-        firstPoint: MyPoint,
-        firstPointPos: 'start' | 'end' | 'edge',
-        line: MyLine,
-        optionOffset: number | null = null
-    ): Vector3 {
-        let secondPosition = new Vector3(0);
-        let offset = 1;
-        if (firstPointPos === 'start') {
-            offset = 1;
-        } else if (firstPointPos === 'end') {
-            offset = -1;
-        } else {
-            offset = optionOffset!;
-        }
-
-        secondPosition = firstPoint.convertedPosition
-            .clone()
-            .add(
-                line.axis!.clone().multiplyScalar(offset * line.convertedLength)
-            );
-        return secondPosition;
-    }
-
-    /** 재귀를 통해서, 연결된 포인트들만 위치를 업데이트 할 수 있음. 반복문으로 할 시 연결되지 않은 점들도 업데이트 할 가능성.
-     * 일단 시작, 끝으로 연결된 점들만 업데이트
-     */
-    public newUpdateConvertedPosition(point: MyPoint) {
-        if (
-            point.connectedLines
-                .map((connectedLine) => connectedLine.pos)
-                .includes('edge')
-        ) {
-            console.log('edge point');
-            return;
-        } else {
-            point.connectedLines.forEach((connectedLine) => {
-                if (connectedLine.pos !== 'edge') {
-                    if (
-                        !(connectedLine.point as MyPoint).updated &&
-                        connectedLine.line.updatedConvertedLength
-                    ) {
-                        (connectedLine.point as MyPoint).convertedPosition.copy(
-                            this.findConverted2ndPosition(
-                                point,
-                                connectedLine.pos,
-                                connectedLine.line
-                            )
-                        );
-                        (connectedLine.point as MyPoint).updated = true;
-                        this.newUpdateConvertedPosition(
-                            connectedLine.point as MyPoint
-                        );
-                    }
-                }
-            });
-        }
-    }
-
-    public loopUpdateConvertedPosition() {
-        for (let targetPoint of this.points) {
-            targetPoint.connectedLines.forEach((connectedLine) => {
-                if (connectedLine.line.updatedConvertedLength) {
-                    if (connectedLine.pos === 'edge' && !targetPoint.updated) {
-                        let edgeStartPoint = connectedLine.line.myPoints[0];
-                        let edgeEndPoint = connectedLine.line.myPoints[1];
-                        let edgePoint = connectedLine.point as Vector3;
-                        let offset =
-                            edgePoint.distanceTo(edgeStartPoint.position) /
-                            edgeStartPoint.position.distanceTo(
-                                edgeEndPoint.position
-                            );
-                        targetPoint.convertedPosition.copy(
-                            this.findConverted2ndPosition(
-                                edgeStartPoint,
-                                'edge',
-                                connectedLine.line,
-                                offset
-                            )
-                        );
-                        targetPoint.updated = true;
-                    } else if (
-                        connectedLine.pos !== 'edge' &&
-                        targetPoint.updated
-                    ) {
-                        (connectedLine.point as MyPoint).convertedPosition.copy(
-                            this.findConverted2ndPosition(
-                                targetPoint,
-                                connectedLine.pos,
-                                connectedLine.line
-                            )
-                        );
-                        (connectedLine.point as MyPoint).updated = true;
-                    }
-                }
-            });
-        }
-    }
-
     private getLineByName(name: string): MyLine | undefined {
         return this.lines.find((line) => line.name === name);
     }
 
     private absVector3(v: Vector3): Vector3 {
         return new Vector3(Math.abs(v.x), Math.abs(v.y), Math.abs(v.z));
+    }
+
+    private setConvertedPosition() {
+        this.points.forEach((point) => {
+            point.convertedPosition = new Vector3(
+                this._variables[0][point.order].value,
+                this._variables[1][point.order].value,
+                this._variables[2][point.order].value
+            );
+        });
+    }
+
+    private findValues() {
+        console.log(
+            'variable count: ',
+            this._variables[0].length +
+                this._variables[1].length +
+                this._variables[2].length +
+                this._variables[3].length
+        );
+        this._variables.forEach((variable) => {
+            variable[0].value = 100;
+            variable[0].isUpdated = true;
+        });
+        let sameCount = 0;
+        while (this.countFalseCount() !== 0) {
+            let beforeFalseCount = this.countFalseCount();
+            for (
+                let variablesIndex = 3;
+                variablesIndex >= 0;
+                variablesIndex--
+            ) {
+                for (
+                    let index = 0;
+                    index < this._variables[variablesIndex].length;
+                    index++
+                ) {
+                    for (let equation of this._variables[variablesIndex][index]
+                        .equations) {
+                        let answer = this.solveEquation(
+                            equation.equation,
+                            equation.parameters,
+                            variablesIndex === 3
+                                ? this.lines[index].axis!.toArray().indexOf(1)
+                                : variablesIndex
+                        );
+                        if (
+                            answer !== -99999 &&
+                            !this._variables[variablesIndex][index].isUpdated
+                        ) {
+                            this._variables[variablesIndex][index].value =
+                                answer;
+                            this._variables[variablesIndex][index].isUpdated =
+                                true;
+                        }
+                    }
+                }
+            }
+            let afterFalseCount = this.countFalseCount();
+            if (beforeFalseCount === afterFalseCount) {
+                sameCount++;
+                if (sameCount > 2) {
+                    for (
+                        let variableIndex = 0;
+                        variableIndex < this._variables[3].length;
+                        variableIndex++
+                    ) {
+                        if (
+                            this._variables[3][variableIndex].isUpdated ===
+                            false
+                        ) {
+                            console.log(
+                                'new length: ',
+                                this.getRatioLength(this.lines[variableIndex])
+                            );
+                            this._variables[3][variableIndex].value =
+                                this.getRatioLength(this.lines[variableIndex]);
+                            this._variables[3][variableIndex].isUpdated = true;
+                            break;
+                        }
+                    }
+                    sameCount = 0;
+                }
+            }
+        }
+    }
+
+    private countFalseCount(): number {
+        let falseCount = 0;
+        for (let variablesIndex = 0; variablesIndex < 3; variablesIndex++) {
+            for (let variable of this._variables[variablesIndex]) {
+                if (variable.isUpdated === false) falseCount++;
+            }
+        }
+        return falseCount;
+    }
+
+    private solveEquation(
+        equation: string,
+        parameters: any[],
+        axis: number
+    ): number {
+        switch (equation) {
+            case 'getSameCoord': {
+                if (this._variables[axis][parameters[0]].isUpdated) {
+                    return this.equationGetSameCoord(
+                        this._variables[axis][parameters[0]].value
+                    );
+                } else return -99999;
+            }
+            case 'getCoord': {
+                if (
+                    this._variables[3][parameters[0]].isUpdated &&
+                    this._variables[axis][parameters[1]].isUpdated
+                ) {
+                    return this.equationGetCoord(
+                        this._variables[3][parameters[0]].value,
+                        this._variables[axis][parameters[1]].value,
+                        parameters[2]
+                    );
+                } else return -99999;
+            }
+            case 'getLength': {
+                if (
+                    this._variables[axis][parameters[0]].isUpdated &&
+                    this._variables[axis][parameters[1]].isUpdated
+                ) {
+                    return this.equationGetLength(
+                        this._variables[axis][parameters[0]].value,
+                        this._variables[axis][parameters[1]].value
+                    );
+                } else return -99999;
+            }
+            case 'getEdgeCoord': {
+                if (
+                    this._variables[axis][parameters[0]].isUpdated &&
+                    this._variables[3][parameters[2]].isUpdated
+                ) {
+                    return this.equationGetEdgeCoord(
+                        this._variables[axis][parameters[0]].value,
+                        parameters[1],
+                        this._variables[3][parameters[2]].value
+                    );
+                } else return -99999;
+            }
+            default:
+                return -99999;
+        }
+    }
+
+    private setEquations() {
+        this.points.forEach((point) => {
+            this.setPointEquation(point);
+        });
+        this.lines.forEach((line) => {
+            this.setLengthEquation(line);
+        });
+    }
+
+    // BFS 방식으로 연결된 포인트들이 가지고 있는 변수들의 방정식을 업데이트해줌
+    // 식을 세워두고, 그 안의 변수 값들을 계속 변경할 수 있어야함.
+    // 배열 등에 필요한 값들을 넣어두고, 그 값들을 참조해서 방정식을 푸는 방식을 해보자.
+    private setPointEquation(basePoint: MyPoint) {
+        // 연결된 라인이 있다면
+        if (basePoint.connectedLines.length > 0) {
+            basePoint.connectedLines.forEach((connectedLine) => {
+                if (connectedLine.pos !== 'edge') {
+                    let targetLine = connectedLine.line;
+                    let targetPoint = connectedLine.point as MyPoint;
+                    let targetLineAxisNumber = targetLine
+                        .axis!.toArray()
+                        .indexOf(1);
+                    let newEquation: equation;
+                    for (let index = 0; index < 3; index++) {
+                        if (index === targetLineAxisNumber) {
+                            newEquation = {
+                                equation: 'getCoord',
+                                parameters: [
+                                    targetLine.order,
+                                    basePoint.order,
+                                    connectedLine.pos === 'start'
+                                        ? 'findEnd'
+                                        : 'findStart',
+                                ],
+                            };
+                        } else {
+                            newEquation = {
+                                equation: 'getSameCoord',
+                                parameters: [basePoint.order],
+                            };
+                        }
+                        if (
+                            this._variables[index][
+                                targetPoint.order
+                            ].equations.find((equation) => {
+                                return (
+                                    equation.equation ===
+                                        newEquation.equation &&
+                                    equation.parameters.every(
+                                        (v, i) =>
+                                            v === newEquation.parameters[i]
+                                    )
+                                );
+                            }) === undefined
+                        ) {
+                            this._variables[index][
+                                targetPoint.order
+                            ].equations.push(newEquation);
+                        }
+                    }
+                } else {
+                    let baseLine = connectedLine.line;
+                    let targetPoint =
+                        connectedLine.line.connectedEdgeLines.find(
+                            (connectedEdgeLine) => {
+                                return connectedEdgeLine.position.equals(
+                                    connectedLine.point as Vector3
+                                );
+                            }
+                        )!.point as MyPoint;
+                    let baseLinePoint = baseLine.myPoints[0];
+                    let baseLineAxisNumber = baseLine
+                        .axis!.toArray()
+                        .indexOf(1);
+                    let baseLineLength =
+                        baseLine.myPoints[0].position.distanceTo(
+                            baseLine.myPoints[1].position
+                        );
+                    let targetLineLength =
+                        baseLine.myPoints[0].position.distanceTo(
+                            targetPoint.position
+                        );
+                    let t = targetLineLength / baseLineLength;
+                    let newEquation: equation;
+                    for (let index = 0; index < 3; index++) {
+                        if (index === baseLineAxisNumber) {
+                            newEquation = {
+                                equation: 'getEdgeCoord',
+                                parameters: [
+                                    baseLinePoint.order,
+                                    t,
+                                    baseLine.order,
+                                ],
+                            };
+                        } else {
+                            newEquation = {
+                                equation: 'getSameCoord',
+                                parameters: [baseLinePoint.order],
+                            };
+                        }
+                        if (
+                            this._variables[index][
+                                targetPoint.order
+                            ].equations.find((equation) => {
+                                return (
+                                    equation.equation ===
+                                        newEquation.equation &&
+                                    equation.parameters.every(
+                                        (v, i) =>
+                                            v === newEquation.parameters[i]
+                                    )
+                                );
+                            }) === undefined
+                        ) {
+                            this._variables[index][
+                                targetPoint.order
+                            ].equations.push(newEquation);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    private setLengthEquation(line: MyLine) {
+        let newEquation: equation;
+        newEquation = {
+            equation: 'getLength',
+            parameters: [line.myPoints[0].order, line.myPoints[1].order],
+        };
+
+        this._variables[3][line.order].equations.push(newEquation);
+    }
+
+    private setVariables() {
+        for (let point of this.points) {
+            this._variables[0].push({
+                value: 0,
+                isUpdated: false,
+                equations: [],
+            });
+            this._variables[1].push({
+                value: 0,
+                isUpdated: false,
+                equations: [],
+            });
+            this._variables[2].push({
+                value: 0,
+                isUpdated: false,
+                equations: [],
+            });
+        }
+        for (let line of this.lines) {
+            this._variables[3].push({
+                value: 0,
+                isUpdated: false,
+                equations: [],
+            });
+        }
+    }
+
+    /**
+     * 같은 값을 구하는 함수
+     * @param p
+     * @returns
+     */
+    private equationGetSameCoord(p: number) {
+        return p;
+    }
+
+    /**
+     * 시작점과 끝 점으로 길이를 구하는 함수
+     * length = |p2 - p1|
+     * @param p1 시작 점 또는 끝 점
+     * @param p2 p1의 반대편 점
+     * @returns 길이
+     */
+    private equationGetLength(p1: number, p2: number): number {
+        let length;
+        length = Math.abs(p2 - p1);
+        return length;
+    }
+
+    /**
+     * 시작 또는 끝 점으로 반대편 점을 구하는 함수
+     * p2 = p + length
+     * p1 = p - length
+     * @param length
+     * @param p
+     * @returns
+     */
+    private equationGetCoord(
+        length: number,
+        p: number,
+        mode: 'findEnd' | 'findStart'
+    ): number {
+        let coord;
+        if (mode === 'findEnd') {
+            coord = p + length;
+        } else {
+            coord = p - length;
+        }
+        return coord;
+    }
+
+    /**
+     * edge에 연결된 점 좌표를 찾는 함수
+     * p = p1 + length * t
+     * @param p1
+     * @param t
+     * @param length
+     * @returns
+     */
+    private equationGetEdgeCoord(p1: number, t: number, length: number) {
+        let coord;
+        coord = p1 + length * t;
+        return coord;
+    }
+
+    private getRatioLength(line: MyLine) {
+        let targetLength2d = line.myPoints[0].position.distanceTo(
+            line.myPoints[1].position
+        );
+        let baseLength2d = this.lines[0].myPoints[0].position.distanceTo(
+            this.lines[0].myPoints[1].position
+        );
+        let ratio = targetLength2d / baseLength2d;
+        let ratioLength = ratio * 100;
+        return ratioLength;
     }
 }
 
@@ -1085,4 +1053,11 @@ export class LineService {
  * 한 쪽만 연결된 라인
  * 연결된 라인이 없는 라인
  * 일단은 축 별로 하는 것이 맞는 것 같아보임.
+ */
+
+/**
+ * 231017
+ * 변수간의 관계로 풀어보자.
+ * structure를 보고 푸는 방법은 범용적인 방법이 아님.
+ * 얼마나 복잡해질 지 모르기 때문.
  */
