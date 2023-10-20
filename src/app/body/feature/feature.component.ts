@@ -24,6 +24,9 @@ export class FeatureComponent {
     public onClickConvert() {
         this._lineService.convertTo3D();
     }
+    public onClickConvertCad() {
+        this._lineService.convertToCad();
+    }
     public changeCamera() {}
     public moveCamera() {}
 }

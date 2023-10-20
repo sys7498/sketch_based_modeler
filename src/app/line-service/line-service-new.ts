@@ -125,7 +125,7 @@ export class LineService {
     private _lastLinePoint: Vector3;
     public lines: MyLine[];
     public points: MyPoint[];
-    public _variables: variable[][]; // 0: x, 1: y, 2: z, 3: l
+    public _variables: variable[][]; // 0: x, 1: y, 2: z, 3: l, 4: t
     private _rayCaster: Raycaster;
     private _viewportDiv: HTMLDivElement;
     private _eventHandler: EventHandler;
@@ -145,7 +145,7 @@ export class LineService {
         this.points = [];
 
         // variables
-        this._variables = [[], [], [], []];
+        this._variables = [[], [], [], [], []];
 
         this._rayCaster = new Raycaster();
         this._rayCaster.params.Line!.threshold = 0.5;
@@ -641,7 +641,6 @@ export class LineService {
         this.clustering();
         this.setVariables();
         this.setEquations();
-        console.log('result', this._variables);
         this.nowDimension = '3D';
         this.findValues();
         console.log('result', this._variables);
@@ -656,6 +655,27 @@ export class LineService {
             this._sceneGraph.lines.add(nl);
         });
         this._sceneGraph.cameraSet.changeCamera('perspective');
+    }
+
+    public convertToCad() {
+        let id = 437890790;
+        let projectName = '64e55ba4e32ef2a49bd7876a_1697793663556_sampleA0';
+        let url = `https://proto.efsoft.kr/cad-api/profile/${id}/segment`;
+        this.lines.forEach((line) => {
+            let start = line.myPoints[0].convertedPosition;
+            let end = line.myPoints[1].convertedPosition;
+            let body = {
+                point0: (start as Vector3).toArray(),
+                point1: (end as Vector3).toArray(),
+                model: 'DF4040',
+                vecU: [-1, 0, 0],
+            };
+            fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: body !== undefined ? JSON.stringify(body) : body,
+            });
+        });
     }
 
     private getLineByName(name: string): MyLine | undefined {
@@ -677,19 +697,29 @@ export class LineService {
     }
 
     private findValues() {
-        console.log(
-            'variable count: ',
+        let variableCount =
             this._variables[0].length +
-                this._variables[1].length +
-                this._variables[2].length +
-                this._variables[3].length
-        );
-        this._variables.forEach((variable) => {
-            variable[0].value = 100;
-            variable[0].isUpdated = true;
-        });
+            this._variables[1].length +
+            this._variables[2].length +
+            this._variables[3].length +
+            this._variables[4].length;
+
+        for (let i = 0; i < 5; i++) {
+            if (i < 3) {
+                this._variables[i][0].value = 0;
+                this._variables[i][0].isUpdated = true;
+            } else if (i === 3) {
+                this._variables[i][0].value = 0;
+                this._variables[i][0].isUpdated = true;
+            } else {
+                this._variables[i][0].value = 2000;
+                this._variables[i][0].isUpdated = true;
+            }
+
+            variableCount -= 5;
+        }
         let sameCount = 0;
-        while (this.countFalseCount() !== 0) {
+        while (this.countFalseCount() !== 0 && sameCount < 100) {
             let beforeFalseCount = this.countFalseCount();
             for (
                 let variablesIndex = 3;
@@ -706,7 +736,7 @@ export class LineService {
                         let answer = this.solveEquation(
                             equation.equation,
                             equation.parameters,
-                            variablesIndex === 3
+                            variablesIndex === 4
                                 ? this.lines[index].axis!.toArray().indexOf(1)
                                 : variablesIndex
                         );
@@ -714,6 +744,10 @@ export class LineService {
                             answer !== -99999 &&
                             !this._variables[variablesIndex][index].isUpdated
                         ) {
+                            variableCount--;
+                            console.log(
+                                `solved!, axis: ${variablesIndex}, index: ${index}, answer: ${answer}`
+                            );
                             this._variables[variablesIndex][index].value =
                                 answer;
                             this._variables[variablesIndex][index].isUpdated =
@@ -726,41 +760,78 @@ export class LineService {
             if (beforeFalseCount === afterFalseCount) {
                 sameCount++;
                 if (sameCount > 2) {
+                    let isNewLengthUpdated = false;
                     for (
                         let variableIndex = 0;
-                        variableIndex < this._variables[3].length;
+                        variableIndex < this._variables[4].length;
                         variableIndex++
                     ) {
                         if (
-                            this._variables[3][variableIndex].isUpdated ===
+                            this._variables[4][variableIndex].isUpdated ===
                             false
                         ) {
                             console.log(
                                 'new length: ',
                                 this.getRatioLength(this.lines[variableIndex])
                             );
-                            this._variables[3][variableIndex].value =
+                            this._variables[4][variableIndex].value =
                                 this.getRatioLength(this.lines[variableIndex]);
-                            this._variables[3][variableIndex].isUpdated = true;
+                            this._variables[4][variableIndex].isUpdated = true;
+                            isNewLengthUpdated = true;
                             break;
                         }
                     }
+                    if (!isNewLengthUpdated) {
+                        for (
+                            let variableIndex = 0;
+                            variableIndex < this._variables[3].length;
+                            variableIndex++
+                        ) {
+                            if (
+                                this._variables[3][variableIndex].isUpdated ===
+                                false
+                            ) {
+                                let targetPoint = this.points[variableIndex];
+                                let checkConnectedLine =
+                                    targetPoint.connectedLines.find(
+                                        (connectedLine) => {
+                                            return connectedLine.pos === 'edge';
+                                        }
+                                    );
+                                if (checkConnectedLine !== undefined) {
+                                    let baseLine = checkConnectedLine.line;
+                                    console.log(
+                                        'new t: ',
+                                        this.getRatioT(baseLine, targetPoint)
+                                    );
+                                    this._variables[3][variableIndex].value =
+                                        this.getRatioT(baseLine, targetPoint);
+                                    this._variables[3][
+                                        variableIndex
+                                    ].isUpdated = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     sameCount = 0;
                 }
             }
+            console.log('remained variable count: ', variableCount);
         }
+        console.log('remained variable count: ', variableCount);
     }
 
     private countFalseCount(): number {
         let falseCount = 0;
-        for (let variablesIndex = 0; variablesIndex < 3; variablesIndex++) {
+        for (let variablesIndex = 0; variablesIndex < 5; variablesIndex++) {
             for (let variable of this._variables[variablesIndex]) {
                 if (variable.isUpdated === false) falseCount++;
             }
         }
         return falseCount;
     }
-
     private solveEquation(
         equation: string,
         parameters: any[],
@@ -776,11 +847,11 @@ export class LineService {
             }
             case 'getCoord': {
                 if (
-                    this._variables[3][parameters[0]].isUpdated &&
+                    this._variables[4][parameters[0]].isUpdated &&
                     this._variables[axis][parameters[1]].isUpdated
                 ) {
                     return this.equationGetCoord(
-                        this._variables[3][parameters[0]].value,
+                        this._variables[4][parameters[0]].value,
                         this._variables[axis][parameters[1]].value,
                         parameters[2]
                     );
@@ -800,14 +871,31 @@ export class LineService {
             case 'getEdgeCoord': {
                 if (
                     this._variables[axis][parameters[0]].isUpdated &&
+                    this._variables[axis][parameters[1]].isUpdated &&
                     this._variables[3][parameters[2]].isUpdated
                 ) {
                     return this.equationGetEdgeCoord(
                         this._variables[axis][parameters[0]].value,
-                        parameters[1],
+                        this._variables[axis][parameters[1]].value,
                         this._variables[3][parameters[2]].value
                     );
                 } else return -99999;
+            }
+            case 'getT': {
+                if (
+                    this._variables[axis][parameters[0]].isUpdated &&
+                    this._variables[axis][parameters[1]].isUpdated &&
+                    this._variables[3][parameters[2]].isUpdated
+                ) {
+                    return this.equationGetT(
+                        this._variables[axis][parameters[0]].value,
+                        this._variables[axis][parameters[1]].value,
+                        this._variables[3][parameters[2]].value
+                    );
+                } else return -99999;
+            }
+            case 'getC': {
+                return this.equationGetConstant(0);
             }
             default:
                 return -99999;
@@ -837,41 +925,43 @@ export class LineService {
                         .axis!.toArray()
                         .indexOf(1);
                     let newEquation: equation;
-                    for (let index = 0; index < 3; index++) {
-                        if (index === targetLineAxisNumber) {
-                            newEquation = {
-                                equation: 'getCoord',
-                                parameters: [
-                                    targetLine.order,
-                                    basePoint.order,
-                                    connectedLine.pos === 'start'
-                                        ? 'findEnd'
-                                        : 'findStart',
-                                ],
-                            };
-                        } else {
-                            newEquation = {
-                                equation: 'getSameCoord',
-                                parameters: [basePoint.order],
-                            };
-                        }
-                        if (
-                            this._variables[index][
-                                targetPoint.order
-                            ].equations.find((equation) => {
-                                return (
-                                    equation.equation ===
-                                        newEquation.equation &&
-                                    equation.parameters.every(
-                                        (v, i) =>
-                                            v === newEquation.parameters[i]
-                                    )
-                                );
-                            }) === undefined
-                        ) {
-                            this._variables[index][
-                                targetPoint.order
-                            ].equations.push(newEquation);
+                    for (let index = 0; index < 4; index++) {
+                        if (index < 3) {
+                            if (index === targetLineAxisNumber) {
+                                newEquation = {
+                                    equation: 'getCoord',
+                                    parameters: [
+                                        targetLine.order,
+                                        basePoint.order,
+                                        connectedLine.pos === 'start'
+                                            ? 'findEnd'
+                                            : 'findStart',
+                                    ],
+                                };
+                            } else {
+                                newEquation = {
+                                    equation: 'getSameCoord',
+                                    parameters: [basePoint.order],
+                                };
+                            }
+                            if (
+                                this._variables[index][
+                                    targetPoint.order
+                                ].equations.find((equation) => {
+                                    return (
+                                        equation.equation ===
+                                            newEquation.equation &&
+                                        equation.parameters.every(
+                                            (v, i) =>
+                                                v === newEquation.parameters[i]
+                                        )
+                                    );
+                                }) === undefined
+                            ) {
+                                this._variables[index][
+                                    targetPoint.order
+                                ].equations.unshift(newEquation);
+                            }
                         }
                     }
                 } else {
@@ -884,36 +974,40 @@ export class LineService {
                                 );
                             }
                         )!.point as MyPoint;
-                    let baseLinePoint = baseLine.myPoints[0];
+                    let baseLinePoint0 = baseLine.myPoints[0];
+                    let baseLinePoint1 = baseLine.myPoints[1];
                     let baseLineAxisNumber = baseLine
                         .axis!.toArray()
                         .indexOf(1);
-                    let baseLineLength =
-                        baseLine.myPoints[0].position.distanceTo(
-                            baseLine.myPoints[1].position
-                        );
-                    let targetLineLength =
-                        baseLine.myPoints[0].position.distanceTo(
-                            targetPoint.position
-                        );
-                    let t = targetLineLength / baseLineLength;
                     let newEquation: equation;
-                    for (let index = 0; index < 3; index++) {
-                        if (index === baseLineAxisNumber) {
-                            newEquation = {
-                                equation: 'getEdgeCoord',
-                                parameters: [
-                                    baseLinePoint.order,
-                                    t,
-                                    baseLine.order,
-                                ],
-                            };
+                    for (let index = 0; index < 4; index++) {
+                        if (index < 3) {
+                            if (index === baseLineAxisNumber) {
+                                newEquation = {
+                                    equation: 'getEdgeCoord',
+                                    parameters: [
+                                        baseLinePoint0.order,
+                                        baseLinePoint1.order,
+                                        targetPoint.order,
+                                    ],
+                                };
+                            } else {
+                                newEquation = {
+                                    equation: 'getSameCoord',
+                                    parameters: [baseLinePoint0.order],
+                                };
+                            }
                         } else {
                             newEquation = {
-                                equation: 'getSameCoord',
-                                parameters: [baseLinePoint.order],
+                                equation: 'getT',
+                                parameters: [
+                                    baseLinePoint0.order,
+                                    baseLinePoint1.order,
+                                    targetPoint.order,
+                                ],
                             };
                         }
+
                         if (
                             this._variables[index][
                                 targetPoint.order
@@ -928,9 +1022,29 @@ export class LineService {
                                 );
                             }) === undefined
                         ) {
+                            if (newEquation.equation === 'getEdgeCoord') {
+                                this._variables[index][
+                                    targetPoint.order
+                                ].equations.push(newEquation);
+                            } else {
+                                this._variables[index][
+                                    targetPoint.order
+                                ].equations.unshift(newEquation);
+                            }
+                        }
+                    }
+                    for (let index = 0; index < 3; index++) {
+                        if (index !== baseLineAxisNumber) {
+                            newEquation = {
+                                equation: 'getSameCoord',
+                                parameters: [targetPoint.order],
+                            };
                             this._variables[index][
-                                targetPoint.order
-                            ].equations.push(newEquation);
+                                baseLinePoint0.order
+                            ].equations.unshift(newEquation);
+                            this._variables[index][
+                                baseLinePoint1.order
+                            ].equations.unshift(newEquation);
                         }
                     }
                 }
@@ -945,7 +1059,7 @@ export class LineService {
             parameters: [line.myPoints[0].order, line.myPoints[1].order],
         };
 
-        this._variables[3][line.order].equations.push(newEquation);
+        this._variables[4][line.order].equations.push(newEquation);
     }
 
     private setVariables() {
@@ -965,9 +1079,27 @@ export class LineService {
                 isUpdated: false,
                 equations: [],
             });
+            console.log(
+                point.connectedLines.find((connectedLine) => {
+                    return connectedLine.pos === 'edge';
+                })
+            );
+            point.connectedLines.find((connectedLine) => {
+                return connectedLine.pos === 'edge';
+            });
+            this._variables[3].push({
+                value: 0,
+                isUpdated:
+                    point.connectedLines.find((connectedLine) => {
+                        return connectedLine.pos === 'edge';
+                    }) === undefined
+                        ? true
+                        : false,
+                equations: [],
+            });
         }
         for (let line of this.lines) {
-            this._variables[3].push({
+            this._variables[4].push({
                 value: 0,
                 isUpdated: false,
                 equations: [],
@@ -1023,14 +1155,35 @@ export class LineService {
      * edge에 연결된 점 좌표를 찾는 함수
      * p = p1 + length * t
      * @param p1
+     * @param p2
      * @param t
-     * @param length
      * @returns
      */
-    private equationGetEdgeCoord(p1: number, t: number, length: number) {
+    private equationGetEdgeCoord(p1: number, p2: number, t: number) {
         let coord;
-        coord = p1 + length * t;
+        coord = p1 + t * (p2 - p1);
         return coord;
+    }
+
+    private equationGetT(p1: number, p2: number, p3: number) {
+        return (p3 - p1) / (p2 - p1);
+    }
+
+    private equationGetConstant(c: number) {
+        return c;
+    }
+
+    private getRatioT(baseLine: MyLine, targetPoint: MyPoint) {
+        let baseLinePoint0 = baseLine.myPoints[0];
+        let baseLinePoint1 = baseLine.myPoints[1];
+        let baseLineAxisNumber = baseLine.axis!.toArray().indexOf(1);
+        let baseLineLength = baseLinePoint0.position.distanceTo(
+            baseLinePoint1.position
+        );
+        let targetLineLength = baseLinePoint0.position.distanceTo(
+            targetPoint.position
+        );
+        return math.round(targetLineLength / baseLineLength, 1);
     }
 
     private getRatioLength(line: MyLine) {
@@ -1040,8 +1193,8 @@ export class LineService {
         let baseLength2d = this.lines[0].myPoints[0].position.distanceTo(
             this.lines[0].myPoints[1].position
         );
-        let ratio = targetLength2d / baseLength2d;
-        let ratioLength = ratio * 100;
+        let ratio = math.round(targetLength2d / baseLength2d, 1);
+        let ratioLength = ratio * 2000;
         return ratioLength;
     }
 }

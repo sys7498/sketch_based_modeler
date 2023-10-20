@@ -19,3 +19,13 @@
 >
     변환
 </button>
+<button
+    class="feature-button"
+    mat-stroked-button
+    (mousedown)="$event.stopPropagation()"
+    (mosemove)="$event.stopPropagation()"
+    (mouseup)="$event.stopPropagation()"
+    (click)="this.onClickConvertCad()"
+>
+    cad변환
+</button>
