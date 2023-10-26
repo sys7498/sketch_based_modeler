@@ -1,7 +1,26 @@
 <div id="container">
+    <div #background id="background">
+        <div class="main">
+            <div #mainView id="main-view" class="element"></div>
+        </div>
+        <div class="sub">
+            <div class="row-1">
+                <div class="element">
+                    <app-draw></app-draw><app-feature></app-feature>
+                </div>
+            </div>
+            <div class="row-2">
+                <div #topSubView id="top-sub-view" class="element"></div>
+            </div>
+            <div class="row-3">
+                <div #bottomSubView id="bottom-sub-view" class="element"></div>
+            </div>
+        </div>
+    </div>
+    <!--
     <div #background id="background"><app-viewport></app-viewport></div>
     <div id="ui">
         <span id="draw"><app-draw></app-draw></span>
         <span id="feature"><app-feature></app-feature></span>
-    </div>
+    </div>-->
 </div>
