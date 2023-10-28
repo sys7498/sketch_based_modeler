@@ -12,6 +12,9 @@ export enum NIndex {
     createdViewportDiv = 0,
     resizedClientSize,
     orbitControlsChanged,
+    createdMainView,
+    createdTopSubView,
+    createdBottomSubView,
 }
 
 /** 알림 서비스 */

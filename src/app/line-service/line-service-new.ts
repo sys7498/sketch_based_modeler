@@ -1,123 +1,41 @@
 import { Injectable } from '@angular/core';
-import {
-    EventHandler,
-    EventService,
-} from 'src/app/event-service/event-service';
-import {
-    NIndex,
-    NotificationService,
-    NotifyHandler,
-} from 'src/app/notification-service/notification-service';
-import { SceneGraphService } from 'src/app/scene-graph-service/scene-graph-service';
-import { SelectionService } from 'src/app/selection-service/selection-service';
-import {
-    ArrowHelper,
-    BufferGeometry,
-    Line,
-    Line3,
-    LineBasicMaterial,
-    Mesh,
-    MeshBasicMaterial,
-    Raycaster,
-    SphereGeometry,
-    Vector2,
-    Vector3,
-} from 'three';
 import * as math from 'mathjs';
-import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
+import {
+    Vector3,
+    Raycaster,
+    BufferGeometry,
+    Line3,
+    Vector2,
+    MeshBasicMaterial,
+    ArrowHelper,
+    Mesh,
+    SphereGeometry,
+    Line,
+    LineBasicMaterial,
+} from 'three';
+import {
+    MyLine,
+    MyPoint,
+    PointConnectedLine,
+    equation,
+    variable,
+} from '../data-interface/data-interface';
+import { EventHandler, EventService } from '../event-service/event-service';
+import {
+    NotifyHandler,
+    NotificationService,
+    NIndex,
+} from '../notification-service/notification-service';
+import { SceneGraphService } from '../scene-graph-service/scene-graph-service';
+import { SelectionService } from '../selection-service/selection-service';
 
-export class Layer {
-    public invisibleLayer = 0;
-    public removedLayer = 1;
-    public visibleLayer = 2;
-}
-
-export class MyLine extends Line {
-    public axis: Vector3 | null;
-    public order: number;
-    public points: Vector3[];
-    public myPoints: MyPoint[];
-    public a: number;
-    public connectedEdgeLines: any[];
-    public label: CSS2DObject | null;
-    public convertedLength: number;
-    public isupdatedCL: boolean;
-    constructor(order: number, startPoint: Vector3) {
-        super(
-            new BufferGeometry().setFromPoints([startPoint]),
-            new LineBasicMaterial({ color: 0x000000, linewidth: 3 })
-        );
-        this.axis = null;
-        this.order = order;
-        this.name = `line_${order}`;
-        this.points = [startPoint];
-        this.myPoints = [];
-        this.a = 0;
-        this.connectedEdgeLines = [];
-        this.label = null;
-        this.convertedLength = 100;
-        this.isupdatedCL = false;
-    }
-
-    public makeLabel() {
-        let div = document.createElement('div');
-        div.className = 'label';
-        div.textContent = `${this.name}`;
-        this.label = new CSS2DObject(div);
-        this.label.position.copy(
-            this.points[0].clone().lerp(this.points[1], 0.5)
-        );
-        //this.add(this.label);
-    }
-}
-
-export class MyPoint extends Mesh {
-    public order: number;
-    public convertedPosition: Vector3 | null;
-
-    public label: CSS2DObject | null;
-    public connectedLines: PointConnectedLine[];
-    constructor(order: number) {
-        super(
-            new SphereGeometry(0.5),
-            new MeshBasicMaterial({ color: 0xff0000 })
-        );
-        this.order = order;
-        this.name = `point_${order}`;
-        this.convertedPosition = null;
-
-        this.label = null;
-        this.connectedLines = [];
-    }
-    public makeLabel() {
-        let div = document.createElement('div');
-        div.className = 'pointLabel';
-        div.textContent = this.name;
-        this.label = new CSS2DObject(div);
-        this.add(this.label);
-    }
-    public updateLabel() {}
-}
-
-export interface PointConnectedLine {
-    line: MyLine;
-    pos: 'start' | 'end' | 'edge';
-    point: MyPoint | Vector3; // MyPoint가 없다면 위치라도 저장해둬야함.
-}
-
-export interface variable {
-    value: number;
-    isUpdated: boolean;
-    equations: equation[];
-}
-
-export interface equation {
-    equation: string;
-    parameters: any[];
+export class MyConstant {
+    public readonly LINELENGTH = 1000;
 }
 
 @Injectable({ providedIn: 'root' })
 export class LineService {
+    public MYCONSTANT: MyConstant;
     public nowDimension: '2D' | '3D';
     public nowDrawMode: 'straight' | 'free' | 'erase';
     public snap: boolean;
@@ -127,7 +45,7 @@ export class LineService {
     public points: MyPoint[];
     public _variables: variable[][]; // 0: x, 1: y, 2: z, 3: l, 4: t
     private _rayCaster: Raycaster;
-    private _viewportDiv: HTMLDivElement;
+    private _viewportDivs: any;
     private _eventHandler: EventHandler;
     private _notifyHandler: NotifyHandler;
 
@@ -137,6 +55,7 @@ export class LineService {
         private _selection: SelectionService,
         private _sceneGraph: SceneGraphService
     ) {
+        this.MYCONSTANT = new MyConstant();
         this.nowDimension = '2D';
         this.nowDrawMode = 'straight';
         this.snap = true;
@@ -150,7 +69,7 @@ export class LineService {
         this._rayCaster = new Raycaster();
         this._rayCaster.params.Line!.threshold = 0.5;
         this.scale = 0;
-        this._viewportDiv = undefined as unknown as HTMLDivElement;
+        this._viewportDivs = undefined as unknown as any;
         this._eventHandler = new EventHandler(this._event);
         this._notifyHandler = new NotifyHandler(
             this._notification,
@@ -163,18 +82,19 @@ export class LineService {
         switch (nid) {
             case NIndex.createdViewportDiv:
                 {
-                    this._viewportDiv = params as HTMLDivElement;
+                    this._viewportDivs = params as any;
                     this.updateScaleLine();
                 }
                 break;
             case NIndex.orbitControlsChanged: {
-                if (this._viewportDiv !== undefined) this.updateScaleLine();
+                if (this._viewportDivs !== undefined) this.updateScaleLine();
             }
         }
     }
 
     private updateScaleLine() {
-        const viewportDivRect = this._viewportDiv.getBoundingClientRect();
+        const viewportDivRect =
+            this._viewportDivs['main'].getBoundingClientRect();
         const start = new Vector3(
             ((20 - viewportDivRect.left) / viewportDivRect.width) * 2 - 1,
             -((30 - viewportDivRect.top) / viewportDivRect.height) * 2 + 1,
@@ -182,7 +102,7 @@ export class LineService {
         );
         var startPoint = new Vector3();
         startPoint.copy(start);
-        startPoint.unproject(this._sceneGraph.cameraSet.camera);
+        startPoint.unproject(this._sceneGraph.cameraSet.cameraSets['camera2d']);
         startPoint.setZ(10);
         const end = new Vector3(
             ((100 - viewportDivRect.left) / viewportDivRect.width) * 2 - 1,
@@ -191,7 +111,7 @@ export class LineService {
         );
         var endPoint = new Vector3();
         endPoint.copy(end);
-        endPoint.unproject(this._sceneGraph.cameraSet.camera);
+        endPoint.unproject(this._sceneGraph.cameraSet.cameraSets['camera2d']);
         endPoint.setZ(10);
         this.scale = math.round(startPoint.distanceTo(endPoint), 2);
     }
@@ -402,7 +322,7 @@ export class LineService {
                 this._selection.mouseRatioPosition.x,
                 this._selection.mouseRatioPosition.y
             ),
-            this._sceneGraph.cameraSet.camera
+            this._sceneGraph.cameraSet.cameraSets['camera2d']
         );
         const intersects = this._rayCaster.intersectObject(
             this._sceneGraph.lines,
@@ -506,7 +426,7 @@ export class LineService {
             }
         }
         if (clusteredPoints.find((cluster) => cluster.length === 0)) {
-            alert('클러스팅 실패');
+            throw new Error('클러스터링 실패');
         } else {
             this.setAxis(clusteredPoints);
             this.adjustStartEndPoints();
@@ -641,7 +561,6 @@ export class LineService {
         this.clustering();
         this.setVariables();
         this.setEquations();
-        this.nowDimension = '3D';
         this.findValues();
         console.log('result', this._variables);
         this.setConvertedPosition();
@@ -652,18 +571,25 @@ export class LineService {
                 )
             );
             let nl = new Line(nlG, new LineBasicMaterial({ color: 0x000000 }));
-            this._sceneGraph.lines.add(nl);
+            this._sceneGraph.convertedLines.add(nl);
         });
-        this._sceneGraph.cameraSet.changeCamera('perspective');
     }
 
     public convertToCad() {
-        let id = 437890790;
-        let projectName = '64e55ba4e32ef2a49bd7876a_1697793663556_sampleA0';
+        let id = 70324544;
+        let projectName = '64e55ba4e32ef2a49bd7876a_1698310267694_sampleA1';
         let url = `https://proto.efsoft.kr/cad-api/profile/${id}/segment`;
         this.lines.forEach((line) => {
-            let start = line.myPoints[0].convertedPosition;
-            let end = line.myPoints[1].convertedPosition;
+            if (
+                line.myPoints[0].convertedPosition === undefined ||
+                line.myPoints[1].convertedPosition === undefined
+            ) {
+                console.log(line.name, 'undefined converted position');
+            }
+            let start = line.myPoints[0].convertedPosition?.clone();
+            start!.add(line.axis!.clone().multiplyScalar(20));
+            let end = line.myPoints[1].convertedPosition?.clone();
+            end!.sub(line.axis!.clone().multiplyScalar(20));
             let body = {
                 point0: (start as Vector3).toArray(),
                 point1: (end as Vector3).toArray(),
@@ -674,6 +600,10 @@ export class LineService {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: body !== undefined ? JSON.stringify(body) : body,
+            }).then((res) => {
+                if (res.ok) {
+                    console.log(line.name, body);
+                }
             });
         });
     }
@@ -712,7 +642,7 @@ export class LineService {
                 this._variables[i][0].value = 0;
                 this._variables[i][0].isUpdated = true;
             } else {
-                this._variables[i][0].value = 2000;
+                this._variables[i][0].value = this.MYCONSTANT.LINELENGTH;
                 this._variables[i][0].isUpdated = true;
             }
 
@@ -1194,7 +1124,7 @@ export class LineService {
             this.lines[0].myPoints[1].position
         );
         let ratio = math.round(targetLength2d / baseLength2d, 1);
-        let ratioLength = ratio * 2000;
+        let ratioLength = ratio * this.MYCONSTANT.LINELENGTH;
         return ratioLength;
     }
 }

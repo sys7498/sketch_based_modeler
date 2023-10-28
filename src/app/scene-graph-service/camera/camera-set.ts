@@ -6,28 +6,35 @@ import {
 import { OrthographicCamera, PerspectiveCamera, Vector3 } from 'three';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { Renderer } from '../renderer/renderer';
 import {
     EventHandler,
     EventService,
     EventType,
 } from 'src/app/event-service/event-service';
+import { cameraSets } from 'src/app/data-interface/data-interface';
+
 export class CameraSet {
-    public camera: OrthographicCamera | PerspectiveCamera;
-    private _orthographicCamera: OrthographicCamera;
-    private _perspectiveCamera: PerspectiveCamera;
-    public orbitControls: OrbitControls;
+    public cameraSets: cameraSets;
     constructor(event: EventService, notification: NotificationService) {
-        this._orthographicCamera = this.createOrthographicCamera(
-            'orthograpicCamera',
-            new Vector3(0, 0, 1000)
-        );
-        this._perspectiveCamera = this.createPerspectiveCamera(
-            'perspectiveCamera',
-            new Vector3(500, 500, 500)
-        );
-        this.camera = this._orthographicCamera;
-        this.orbitControls = undefined as unknown as OrbitControls;
-        this._viewportDiv = undefined as unknown as HTMLDivElement;
+        this.cameraSets = {
+            camera2d: this.createOrthographicCamera(
+                'camera2d',
+                new Vector3(0, 0, 1000)
+            ),
+            orbitControls2d: undefined as unknown as OrbitControls,
+            camera3d: this.createPerspectiveCamera(
+                'camera3d',
+                new Vector3(1500, -1500, 1500)
+            ),
+            orbitControls3d: undefined as unknown as OrbitControls,
+            cameraResult: this.createPerspectiveCamera(
+                'cameraResult',
+                new Vector3(1500, -1500, 1500)
+            ),
+            orbitControlsResult: undefined as unknown as OrbitControls,
+        };
+        this._viewportDivs = undefined as unknown as any;
         this._notifyHandler = new NotifyHandler(
             notification,
             this.onNotify.bind(this)
@@ -50,46 +57,68 @@ export class CameraSet {
         this._eventHandler.set(EventType.OnKeyUp, this.onKeyUp.bind(this));
     }
 
-    initialize(
-        viewportDiv: HTMLDivElement,
-        css2DRenderer: CSS2DRenderer
-    ): void {
-        this._viewportDiv = viewportDiv;
+    initialize(viewportDivs: any, renderer: Renderer): void {
+        this._viewportDivs = viewportDivs;
         this.onWindowResize();
-        this.orbitControls = new OrbitControls(
-            this.camera,
-            css2DRenderer.domElement
+        this.cameraSets['orbitControls2d'] = new OrbitControls(
+            this.cameraSets['camera2d'],
+            this._viewportDivs['main']
         );
-        this.orbitControls.addEventListener('change', () => {
+        this.cameraSets['orbitControls2d'].enableRotate = false;
+        this.cameraSets['orbitControls2d'].addEventListener('change', () => {
+            console.log('orbitControls2d changed');
             this._notifyHandler.notify(NIndex.orbitControlsChanged);
         });
-        this.orbitControls.object = this.camera;
-        this.orbitControls.enabled = true;
-        this.orbitControls.enableRotate = false;
+
+        this.cameraSets['orbitControls3d'] = new OrbitControls(
+            this.cameraSets['camera3d'],
+            this._viewportDivs['topSub']
+        );
+        this.cameraSets['orbitControls3d'].addEventListener('change', () => {
+            console.log('orbitControls3d changed');
+            this._notifyHandler.notify(NIndex.orbitControlsChanged);
+        });
+
+        this.cameraSets['orbitControlsResult'] = new OrbitControls(
+            this.cameraSets['cameraResult'],
+            this._viewportDivs['bottomSub']
+        );
+        this.cameraSets['orbitControlsResult'].addEventListener(
+            'change',
+            () => {
+                console.log('orbitControlsResult changed');
+                this._notifyHandler.notify(NIndex.orbitControlsChanged);
+            }
+        );
     }
 
     public onWindowResize(): void {
-        this._perspectiveCamera.aspect =
-            this._viewportDiv.clientWidth / this._viewportDiv.clientHeight;
-        this._perspectiveCamera.updateProjectionMatrix();
-        this._orthographicCamera.left = -this._viewportDiv.clientWidth / 2;
-        this._orthographicCamera.right = this._viewportDiv.clientWidth / 2;
-        this._orthographicCamera.top = this._viewportDiv.clientHeight / 2;
-        this._orthographicCamera.bottom = -this._viewportDiv.clientHeight / 2;
-        this._orthographicCamera.updateProjectionMatrix();
-        if (this.orbitControls) this.orbitControls.update();
-    }
+        this.cameraSets['camera3d'].aspect =
+            this._viewportDivs['topSub'].clientWidth /
+            this._viewportDivs['topSub'].clientHeight;
+        this.cameraSets['camera3d'].updateProjectionMatrix();
 
-    public changeCamera(camera: 'ortho' | 'perspective') {
-        if (camera === 'ortho') {
-            this.camera = this._orthographicCamera;
-            this.orbitControls.enableRotate = false;
-        } else {
-            this.camera = this._perspectiveCamera;
-            this.orbitControls.enableRotate = true;
-        }
-        this.orbitControls.object = this.camera;
-        if (this.orbitControls) this.orbitControls.update();
+        this.cameraSets['cameraResult'].aspect =
+            this._viewportDivs['bottomSub'].clientWidth /
+            this._viewportDivs['bottomSub'].clientHeight;
+        this.cameraSets['cameraResult'].updateProjectionMatrix();
+
+        this.cameraSets['camera2d'].left =
+            -this._viewportDivs['main'].clientWidth / 2;
+        this.cameraSets['camera2d'].right =
+            this._viewportDivs['main'].clientWidth / 2;
+        this.cameraSets['camera2d'].top =
+            this._viewportDivs['main'].clientHeight / 2;
+        this.cameraSets['camera2d'].bottom =
+            -this._viewportDivs['main'].clientHeight / 2;
+        this.cameraSets['camera2d'].updateProjectionMatrix();
+
+        if (this.cameraSets['orbitControls2d'])
+            this.cameraSets['orbitControls2d'].update();
+        if (this.cameraSets['orbitControls3d'])
+            this.cameraSets['orbitControls3d'].update();
+        if (this.cameraSets['orbitControlsResult'])
+            this.cameraSets['orbitControlsResult'].update();
     }
 
     private onNotify(nid: number, params: any, sender: any): void {
@@ -139,5 +168,5 @@ export class CameraSet {
 
     private _eventHandler: EventHandler;
     private _notifyHandler: NotifyHandler;
-    private _viewportDiv: HTMLDivElement;
+    private _viewportDivs: any;
 }

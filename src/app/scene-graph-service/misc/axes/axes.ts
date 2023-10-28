@@ -3,8 +3,7 @@ import { SceneGraphService } from '../../scene-graph-service';
 
 export class Axes {
     constructor(sceneGraph: SceneGraphService) {
-        this._axes = this.createAxis('Axes');
-        sceneGraph.misc.add(this._axes);
+        this.axes = this.createAxis('Axes');
     }
 
     private createAxis(name: string): AxesHelper {
@@ -14,5 +13,5 @@ export class Axes {
 
         return axes;
     }
-    private _axes: AxesHelper;
+    public axes: AxesHelper;
 }
