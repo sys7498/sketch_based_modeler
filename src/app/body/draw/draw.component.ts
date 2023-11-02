@@ -114,15 +114,6 @@ export class DrawComponent {
         }
     }
 
-    private onTouchStart(event: TouchEvent): void {
-        if (this._lineService.nowDimension !== '2D') return;
-        if (event.changedTouches.length === 1) {
-            if (this.nowMode !== 'erase') {
-                this._lineService.drawLineStart();
-            }
-        }
-    }
-
     private onMouseMove(event: MouseEvent): void {
         if (this._lineService.nowDimension !== '2D') return;
         if (event.button === MouseEventButton.Left) {
@@ -136,17 +127,6 @@ export class DrawComponent {
                 if (this._isMouseDown) {
                     this._lineService.eraseLine();
                 }
-            }
-        }
-    }
-
-    private onTouchMove(event: TouchEvent): void {
-        if (this._lineService.nowDimension !== '2D') return;
-        if (event.changedTouches.length === 1) {
-            if (this.nowMode !== 'erase') {
-                this._lineService.drawLine();
-            } else {
-                this._lineService.eraseLine();
             }
         }
     }
@@ -165,6 +145,26 @@ export class DrawComponent {
                 this._lineService.lines[index].geometry = newLineGeometry;
             }
             this._isMouseDown = false;
+        }
+    }
+
+    private onTouchStart(event: TouchEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
+        if (event.changedTouches.length === 1) {
+            if (this.nowMode !== 'erase') {
+                this._lineService.drawLineStart();
+            }
+        }
+    }
+
+    private onTouchMove(event: TouchEvent): void {
+        if (this._lineService.nowDimension !== '2D') return;
+        if (event.changedTouches.length === 1) {
+            if (this.nowMode !== 'erase') {
+                this._lineService.drawLine();
+            } else {
+                this._lineService.eraseLine();
+            }
         }
     }
 

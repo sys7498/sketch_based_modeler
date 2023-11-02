@@ -167,7 +167,6 @@ export class LineService {
             }
         }
         this.convertFreeLineToStraightLine();
-        this.updatePoints(this.lines[this.lines.length - 1]);
     }
 
     public updatePoints(line: MyLine) {
@@ -193,28 +192,8 @@ export class LineService {
                 pos: index === 0 ? 'end' : 'start',
             });
         });
-        /** edge 연결된 포인트 myPoint 대응시켜주기 */
-        this.lines.forEach((line) => {
-            line.connectedEdgeLines.forEach((edgeLine) => {
-                edgeLine.line.myPoints.forEach((myPoint: MyPoint) => {
-                    if (myPoint.position.equals(edgeLine.position)) {
-                        let newData: PointConnectedLine = {
-                            point: myPoint.position.clone(),
-                            line: line,
-                            pos: 'edge',
-                        };
-                        if (
-                            myPoint.connectedLines.find((connectedLine) => {
-                                return connectedLine.pos === 'edge';
-                            }) === undefined
-                        ) {
-                            myPoint.connectedLines.unshift(newData);
-                            edgeLine.point = myPoint;
-                        }
-                    }
-                });
-            });
-        });
+
+        console.log(this.lines, this.points);
     }
 
     public snap(): boolean {
@@ -261,6 +240,7 @@ export class LineService {
             );
             return true;
         } else {
+            this._lastSnappedObject = null;
             this._lastLinePoint = this._selection.mouseWorldPosition;
             return false;
         }
@@ -344,6 +324,29 @@ export class LineService {
         this.updatePoints(this.lines[index]);
         this._isStartSnaped = false;
         this._isEndSnaped = false;
+
+        /** edge 연결된 포인트 myPoint 대응시켜주기 */
+        this.lines.forEach((line) => {
+            line.connectedEdgeLines.forEach((edgeLine) => {
+                edgeLine.line.myPoints.forEach((myPoint: MyPoint) => {
+                    if (myPoint.position.equals(edgeLine.position)) {
+                        let newData: PointConnectedLine = {
+                            point: myPoint.position.clone(),
+                            line: line,
+                            pos: 'edge',
+                        };
+                        if (
+                            myPoint.connectedLines.find((connectedLine) => {
+                                return connectedLine.pos === 'edge';
+                            }) === undefined
+                        ) {
+                            myPoint.connectedLines.unshift(newData);
+                            edgeLine.point = myPoint;
+                        }
+                    }
+                });
+            });
+        });
     }
 
     public eraseLine() {
