@@ -55,18 +55,30 @@ export class SelectionService {
             this.onMouseMove.bind(this)
         );
         this._eventHandler.set(EventType.OnMouseUp, this.onMouseUp.bind(this));
-        this._eventHandler.set(
-            EventType.OnTouchStart,
-            this.onTouchStart.bind(this)
-        );
-        this._eventHandler.set(
-            EventType.OnTouchMove,
-            this.onTouchMove.bind(this)
-        );
-        this._eventHandler.set(
-            EventType.OnTouchEnd,
-            this.onTouchEnd.bind(this)
-        );
+        //this._eventHandler.set(
+        //    EventType.OnTouchStart,
+        //    this.onTouchStart.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnTouchMove,
+        //    this.onTouchMove.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnTouchEnd,
+        //    this.onTouchEnd.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnPointerDown,
+        //    this.onPointerDown.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnPointerMove,
+        //    this.onPointerMove.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnPointerUp,
+        //    this.onPointerUp.bind(this)
+        //);
         this._notifyHandler = new NotifyHandler(
             notification,
             this.onNotify.bind(this)
@@ -123,6 +135,22 @@ export class SelectionService {
         );
     }
 
+    private onPointerDown(event: PointerEvent): void {
+        if (this.isMouseInViewport(event.clientX, event.clientY)) {
+            this.updateMouseWorldPosition(event.clientX, event.clientY, 0.5);
+        }
+    }
+    private onPointerMove(event: PointerEvent): void {
+        if (this.isMouseInViewport(event.clientX, event.clientY)) {
+            this.updateMouseWorldPosition(event.clientX, event.clientY, 0.5);
+        }
+    }
+    private onPointerUp(event: PointerEvent): void {
+        if (this.isMouseInViewport(event.clientX, event.clientY)) {
+            this.updateMouseWorldPosition(event.clientX, event.clientY, 0.5);
+        }
+    }
+
     /** 화면의 픽셀 좌표를 비율로 변환하고 반환하는 메서드
      * @param clientX 화면 상의 X 좌표
      * @param clientY 화면 상의 Y 좌표
@@ -150,7 +178,7 @@ export class SelectionService {
      * @param clientX 화면 상의 X 좌표
      * @param clientY 화면 상의 Y 좌표
      */
-    protected isMouseInViewport(clientX: number, clientY: number): boolean {
+    public isMouseInViewport(clientX: number, clientY: number): boolean {
         const viewportRect = this._viewportDivs['main'].getBoundingClientRect();
         return (
             clientX > viewportRect.left &&

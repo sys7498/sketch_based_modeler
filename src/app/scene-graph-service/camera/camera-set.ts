@@ -12,7 +12,7 @@ import {
     EventService,
     EventType,
 } from 'src/app/event-service/event-service';
-import { cameraSets } from 'src/app/data-interface/data-interface';
+import { cameraSets } from 'src/app/custom-types/custom-types';
 
 export class CameraSet {
     public cameraSets: cameraSets;

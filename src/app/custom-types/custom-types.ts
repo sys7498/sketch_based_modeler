@@ -68,11 +68,11 @@ export class MyPoint extends Mesh {
         this.connectedLines = [];
     }
     public makeLabel() {
-        let div = document.createElement('div');
-        div.className = 'pointLabel';
-        div.textContent = this.name;
-        this.label = new CSS2DObject(div);
-        this.add(this.label);
+        //let div = document.createElement('div');
+        //div.className = 'pointLabel';
+        //div.textContent = this.name;
+        //this.label = new CSS2DObject(div);
+        //this.add(this.label);
     }
     public updateLabel() {}
 }

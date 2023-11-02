@@ -1,4 +1,4 @@
-import { Component, HostListener } from '@angular/core';
+import { Component, Host, HostListener } from '@angular/core';
 import {
     EventService,
     AnyEvent,
@@ -126,6 +126,21 @@ export class AppComponent {
     @HostListener('window:input', ['$event'])
     onInput(event: InputEvent): void {
         this._event.emit(EventType.OnInput, event as AnyEvent);
+    }
+
+    @HostListener('window:pointerdown', ['$event'])
+    onPointerDown(event: PointerEvent): void {
+        this._event.emit(EventType.OnPointerDown, event as AnyEvent);
+    }
+
+    @HostListener('window:pointermove', ['$event'])
+    onPointerMove(event: PointerEvent): void {
+        this._event.emit(EventType.OnPointerMove, event as AnyEvent);
+    }
+
+    @HostListener('window:pointerup', ['$event'])
+    onPointerUp(event: PointerEvent): void {
+        this._event.emit(EventType.OnPointerUp, event as AnyEvent);
     }
 
     /** 알림 수신 콜백 메서드 */

@@ -3,7 +3,7 @@ import { EventService } from 'src/app/event-service/event-service';
 import { NotificationService } from 'src/app/notification-service/notification-service';
 import { SceneGraphService } from 'src/app/scene-graph-service/scene-graph-service';
 import { SelectionService } from 'src/app/selection-service/selection-service';
-import { LineService } from '../../line-service/line-service-new';
+import { LineService } from '../../line-service/line-service';
 
 @Component({
     selector: 'app-feature',
@@ -18,14 +18,11 @@ export class FeatureComponent {
         private _sceneGraph: SceneGraphService,
         private _lineService: LineService
     ) {}
-    public onShowDirections() {
-        this._lineService.visualizeDirections();
-    }
     public onClickConvert() {
-        this._lineService.convertTo3D();
+        this._lineService.converter.convertTo3D();
     }
     public onClickConvertCad() {
-        this._lineService.convertToCad();
+        this._lineService.converter.convertToCad();
     }
     public changeCamera() {}
     public moveCamera() {}

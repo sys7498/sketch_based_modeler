@@ -22,31 +22,7 @@ import {
     Vector3,
 } from 'three';
 import * as math from 'mathjs';
-import { LineService } from '../../line-service/line-service-new';
-
-export class MyLine extends Line {
-    public points: Vector3[];
-    public connectedStartLineName: string | null;
-    public connectedStartPoint: Vector3 | null;
-    public connectedEndLineName: string | null;
-    public connectedEndPoint: Vector3 | null;
-    public connectedEdgeLineName: string[];
-    public connectedEdgePoint: Vector3[];
-    constructor(name: string, startPoint: Vector3) {
-        super(
-            new BufferGeometry().setFromPoints([startPoint]),
-            new LineBasicMaterial({ color: 0x000000, linewidth: 3 })
-        );
-        this.name = name;
-        this.points = [startPoint];
-        this.connectedStartLineName = null;
-        this.connectedStartPoint = null;
-        this.connectedEndLineName = null;
-        this.connectedEndPoint = null;
-        this.connectedEdgeLineName = [];
-        this.connectedEdgePoint = [];
-    }
-}
+import { LineService } from '../../line-service/line-service';
 
 @Component({
     selector: 'app-draw',
@@ -58,6 +34,7 @@ export class DrawComponent {
     public nowMode: 'straight' | 'free' | 'erase';
     public snap: boolean;
     public scale: number;
+    private _isPointerDown: boolean;
     private _isMouseDown: boolean;
     private _eventHandler: EventHandler;
     private _notifyHandler: NotifyHandler;
@@ -71,6 +48,7 @@ export class DrawComponent {
     ) {
         this.nowMode = 'straight';
         this.snap = true;
+        this._isPointerDown = false;
         this._isMouseDown = false;
         this.scale = this._lineService.scale;
         this._eventHandler = new EventHandler(this._event);
@@ -83,18 +61,30 @@ export class DrawComponent {
             this.onMouseMove.bind(this)
         );
         this._eventHandler.set(EventType.OnMouseUp, this.onMouseUp.bind(this));
-        this._eventHandler.set(
-            EventType.OnTouchStart,
-            this.onTouchStart.bind(this)
-        );
-        this._eventHandler.set(
-            EventType.OnTouchMove,
-            this.onTouchMove.bind(this)
-        );
-        this._eventHandler.set(
-            EventType.OnTouchEnd,
-            this.onTouchEnd.bind(this)
-        );
+        //this._eventHandler.set(
+        //    EventType.OnTouchStart,
+        //    this.onTouchStart.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnTouchMove,
+        //    this.onTouchMove.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnTouchEnd,
+        //    this.onTouchEnd.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnPointerDown,
+        //    this.onPointerDown.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnPointerMove,
+        //    this.onPointerMove.bind(this)
+        //);
+        //this._eventHandler.set(
+        //    EventType.OnPointerUp,
+        //    this.onPointerUp.bind(this)
+        //);
         this._notifyHandler = new NotifyHandler(
             this._notification,
             this.onNotify.bind(this)
@@ -139,6 +129,8 @@ export class DrawComponent {
             if (this.nowMode !== 'erase') {
                 if (this._isMouseDown) {
                     this._lineService.drawLine();
+                } else {
+                    this._lineService.changeStartSnap();
                 }
             } else {
                 if (this._isMouseDown) {
@@ -163,6 +155,7 @@ export class DrawComponent {
         if (this._lineService.nowDimension !== '2D') return;
         if (event.button === MouseEventButton.Left) {
             if (this.nowMode === 'straight') {
+                //this._lineService.drawLineEnd();
                 this._lineService.convertFreeLineToStraightLine();
             } else if (this.nowMode === 'free') {
                 const index = this._lineService.lines.length - 1;
@@ -180,6 +173,53 @@ export class DrawComponent {
         if (event.changedTouches.length === 1) {
             if (this.nowMode === 'straight') {
                 this._lineService.convertFreeLineToStraightLine();
+            }
+        }
+    }
+
+    private onPointerDown(event: PointerEvent): void {
+        if (this._selection.isMouseInViewport(event.clientX, event.clientY)) {
+            if (this._lineService.nowDimension !== '2D') return;
+            if (event.button === MouseEventButton.Left) {
+                this._isPointerDown = true;
+                if (this.nowMode !== 'erase') {
+                    this._lineService.drawLineStart();
+                }
+            }
+        }
+    }
+    private onPointerMove(event: PointerEvent): void {
+        if (this._selection.isMouseInViewport(event.clientX, event.clientY)) {
+            if (this._lineService.nowDimension !== '2D') return;
+            if (this.nowMode !== 'erase') {
+                if (this._isPointerDown) {
+                    console.log('ddd');
+                    this._lineService.drawLine();
+                } else {
+                    this._lineService.changeStartSnap();
+                }
+            } else {
+                if (this._isPointerDown) {
+                    this._lineService.eraseLine();
+                }
+            }
+        }
+    }
+    private onPointerUp(event: PointerEvent): void {
+        if (this._selection.isMouseInViewport(event.clientX, event.clientY)) {
+            if (this._lineService.nowDimension !== '2D') return;
+            if (this._isPointerDown) {
+                if (this.nowMode === 'straight') {
+                    this._lineService.drawLineEnd();
+                    //this._lineService.convertFreeLineToStraightLine();
+                } else if (this.nowMode === 'free') {
+                    const index = this._lineService.lines.length - 1;
+                    let newLineGeometry = new BufferGeometry().setFromPoints(
+                        this._lineService.lines[index].points
+                    );
+                    this._lineService.lines[index].geometry = newLineGeometry;
+                }
+                this._isPointerDown = false;
             }
         }
     }
