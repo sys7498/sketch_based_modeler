@@ -236,6 +236,7 @@ export class Converter {
 
     public visualizeDirections() {
         this.clustering();
+        /*
         this._lineService.lines.forEach((line) => {
             if (line.points.length == 2) {
                 let startToEndV = this.absVector3(
@@ -252,7 +253,7 @@ export class Converter {
                 dp.position.copy(startToEndV.clone());
                 this._sceneGraphService.misc.add(dp);
             }
-        });
+        });*/
     }
 
     public convertTo3D() {
@@ -274,44 +275,77 @@ export class Converter {
     }
 
     public convertToCad() {
-        let id = 49682874;
-        let projectName = '64e55ba4e32ef2a49bd7876a_1698654759182_sampleB';
-        let url = `https://proto.efsoft.kr/cad-api/profile/${id}/segment`;
-        this._lineService.lines.forEach((line) => {
-            if (
-                line.myPoints[0] === undefined ||
-                line.myPoints[1] === undefined
-            ) {
-                console.log('undefined myPoints');
-            } else {
-                if (
-                    line.myPoints[0].convertedPosition === undefined ||
-                    line.myPoints[1].convertedPosition === undefined
-                ) {
-                    console.log(line.name, 'undefined converted position');
-                } else {
-                    let start = line.myPoints[0].convertedPosition?.clone();
-                    start!.add(line.axis!.clone().multiplyScalar(20));
-                    let end = line.myPoints[1].convertedPosition?.clone();
-                    end!.sub(line.axis!.clone().multiplyScalar(20));
-                    let body = {
-                        point0: (start as Vector3).toArray(),
-                        point1: (end as Vector3).toArray(),
-                        model: 'DF4040',
-                        vecU: [-1, 0, 0],
-                    };
-                    fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: body !== undefined ? JSON.stringify(body) : body,
-                    }).then((res) => {
-                        if (res.ok) {
-                            console.log(line.name, body);
-                        }
-                    });
-                }
+        let id = 451463969;
+        let protoProjectId = '6543e093697478987b0ef125';
+        let projectName = '64e55ba4e32ef2a49bd7876a_1698947219420_sampleC';
+
+        let projectUploadURL = `https://proto.efsoft.kr/api/projects/${protoProjectId}`;
+        let projectInitURL = `https://proto.efsoft.kr/cad-api/profile/${id}/init`;
+        let segmentAddURL = `https://proto.efsoft.kr/cad-api/profile/${id}/segment`;
+
+        /** cad서버에 업로드 우선 */
+        fetch(projectUploadURL, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        }).then((res) => {
+            if (res.ok) {
+                fetch(projectInitURL, {
+                    headers: { 'Content-Type': 'application/json' },
+                }).then((res) => {
+                    if (res.ok) {
+                        this.cadAddSegment(segmentAddURL, 0);
+                    }
+                });
             }
         });
+    }
+
+    private cadAddSegment(segmentAddURL: string, index: number) {
+        if (index === this._lineService.lines.length) {
+            console.log('asdf');
+            let id = 451463969;
+            let projectName = '64e55ba4e32ef2a49bd7876a_1698947219420_sampleC';
+            let projectSaveURL = `https://proto.efsoft.kr/cad-api/profile/${id}/storage?name=${projectName}`;
+            fetch(projectSaveURL, {
+                method: 'POST',
+            });
+            return;
+        }
+
+        let line = this._lineService.lines[index];
+        if (line.myPoints[0] === undefined || line.myPoints[1] === undefined) {
+            console.log('undefined myPoints');
+        } else {
+            if (
+                line.myPoints[0].convertedPosition === undefined ||
+                line.myPoints[1].convertedPosition === undefined
+            ) {
+                console.log(line.name, 'undefined converted position');
+            } else {
+                let start = line.myPoints[0].convertedPosition?.clone();
+                start!.add(line.axis!.clone().multiplyScalar(20));
+                let end = line.myPoints[1].convertedPosition?.clone();
+                end!.sub(line.axis!.clone().multiplyScalar(20));
+                let body = {
+                    point0: (start as Vector3).toArray(),
+                    point1: (end as Vector3).toArray(),
+                    model: 'DF4040',
+                    vecU: [-1, 0, 0],
+                };
+                fetch(segmentAddURL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: body !== undefined ? JSON.stringify(body) : body,
+                }).then((res) => {
+                    if (res.ok) {
+                        this.cadAddSegment(segmentAddURL, ++index);
+                        console.log(line.name, body);
+                    }
+                });
+            }
+        }
     }
 
     private absVector3(v: Vector3): Vector3 {

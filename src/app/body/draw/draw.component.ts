@@ -135,8 +135,7 @@ export class DrawComponent {
         if (this._lineService.nowDimension !== '2D') return;
         if (event.button === MouseEventButton.Left) {
             if (this.nowMode === 'straight') {
-                //this._lineService.drawLineEnd();
-                this._lineService.convertFreeLineToStraightLine();
+                this._lineService.drawLineEnd();
             } else if (this.nowMode === 'free') {
                 const index = this._lineService.lines.length - 1;
                 let newLineGeometry = new BufferGeometry().setFromPoints(

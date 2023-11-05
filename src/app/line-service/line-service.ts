@@ -119,6 +119,8 @@ export class LineService {
     }
 
     public drawLineStart() {
+        let newLine = new MyLine(this.lines.length, this._lastLinePoint);
+        this.lines.push(newLine);
         if (this._lastSnappedObject !== null) {
             if (this._lastSnappedObject instanceof MyLine) {
                 this.lines[
@@ -130,8 +132,6 @@ export class LineService {
                 });
             }
         }
-        let newLine = new MyLine(this.lines.length, this._lastLinePoint);
-        this.lines.push(newLine);
         this._sceneGraph.lines.add(newLine);
     }
 
@@ -141,7 +141,7 @@ export class LineService {
             0.2
         ) {
             this._lastLinePoint = this._selection.mouseWorldPosition;
-            if (this.lines[this.lines.length - 1].points.length > 20) {
+            if (this.lines[this.lines.length - 1].points.length > 10) {
                 if (this.snap()) this._isEndSnaped = true;
                 else false;
             }
@@ -153,8 +153,6 @@ export class LineService {
     }
 
     public drawLineEnd() {
-        if (this.snap()) this._isEndSnaped = true;
-        else false;
         if (this._lastSnappedObject !== null) {
             if (this._lastSnappedObject instanceof MyLine) {
                 this.lines[
@@ -192,8 +190,6 @@ export class LineService {
                 pos: index === 0 ? 'end' : 'start',
             });
         });
-
-        console.log(this.lines, this.points);
     }
 
     public snap(): boolean {
