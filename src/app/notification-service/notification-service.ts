@@ -15,6 +15,7 @@ export enum NIndex {
     createdMainView,
     createdTopSubView,
     createdBottomSubView,
+    isMouseInMain,
 }
 
 /** 알림 서비스 */

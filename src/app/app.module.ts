@@ -9,6 +9,8 @@ import { DrawComponent } from './body/draw/draw.component';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { FeatureComponent } from './body/feature/feature.component';
 import { MatGridListModule } from '@angular/material/grid-list';
+import { MatCardModule } from '@angular/material/card';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 @NgModule({
     declarations: [
         AppComponent,
@@ -22,6 +24,8 @@ import { MatGridListModule } from '@angular/material/grid-list';
         MaterialModule,
         MatButtonToggleModule,
         MatGridListModule,
+        MatCardModule,
+        MatProgressBarModule,
     ],
     providers: [],
     bootstrap: [AppComponent],

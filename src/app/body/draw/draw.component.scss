@@ -3,3 +3,6 @@
     height: 36px;
     align-items: center;
 }
+::ng-deep.mat-mdc-button {
+    min-width: 0px !important;
+}

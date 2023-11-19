@@ -29,7 +29,6 @@ import { MyConstant } from '../my-constant/my-constant';
 
 @Injectable({ providedIn: 'root' })
 export class LineService {
-    public nowDimension: '2D' | '3D';
     public nowDrawMode: 'straight' | 'free' | 'erase';
     public scale: number;
     private _lastLinePoint: Vector3;
@@ -41,6 +40,8 @@ export class LineService {
     private _isStartSnaped: boolean;
     private _isEndSnaped: boolean;
     private _lastSnappedObject: MyLine | MyPoint | null;
+    private _history: { [key: string]: any }[];
+    private _historyPointer: number;
     private _eventHandler: EventHandler;
     private _notifyHandler: NotifyHandler;
 
@@ -50,7 +51,6 @@ export class LineService {
         private _selection: SelectionService,
         private _sceneGraph: SceneGraphService
     ) {
-        this.nowDimension = '2D';
         this.nowDrawMode = 'straight';
         this._lastLinePoint = new Vector3(0, 0, 10);
         this._isStartSnaped = false;
@@ -67,6 +67,13 @@ export class LineService {
 
         this.converter = new Converter(this, this._sceneGraph);
 
+        this._history = [
+            {
+                lines: [],
+                points: [],
+            },
+        ];
+        this._historyPointer = 0;
         this._eventHandler = new EventHandler(this._event);
         this._notifyHandler = new NotifyHandler(
             this._notification,
@@ -165,6 +172,61 @@ export class LineService {
             }
         }
         this.convertFreeLineToStraightLine();
+        this.registerHistory();
+    }
+
+    public registerHistory() {
+        let newHistory = {
+            lines: [...this.lines],
+            points: [...this.points],
+        };
+        if (this._historyPointer < this._history.length - 1) {
+            this._history.splice(this._historyPointer + 1);
+        }
+        this._history.push(newHistory);
+        this._historyPointer++;
+        console.log(this._history);
+    }
+
+    public undoHistory() {
+        if (this._historyPointer <= 0) return;
+        this.removeMyObjects();
+        this._historyPointer--;
+        this.lines = [...this._history[this._historyPointer]['lines']];
+        this.lines.forEach((line) => {
+            this._sceneGraph.lines.add(line);
+        });
+        this.points = [...this._history[this._historyPointer]['points']];
+        this.points.forEach((point) => {
+            this._sceneGraph.lines.add(point);
+        });
+        console.log(this._history);
+    }
+
+    public redoHIstory() {
+        if (this._historyPointer >= this._history.length - 1) return;
+        this.removeMyObjects();
+        this._historyPointer++;
+        this.lines = [...this._history[this._historyPointer]['lines']];
+        this.lines.forEach((line) => {
+            this._sceneGraph.lines.add(line);
+        });
+        this.points = [...this._history[this._historyPointer]['points']];
+        this.points.forEach((point) => {
+            this._sceneGraph.lines.add(point);
+        });
+        console.log(this._history);
+    }
+
+    public removeMyObjects() {
+        this.lines.forEach((line) => {
+            this._sceneGraph.lines.remove(line);
+        });
+        this.points.forEach((point) => {
+            this._sceneGraph.lines.remove(point);
+        });
+        this.lines = [];
+        this.points = [];
     }
 
     public updatePoints(line: MyLine) {
@@ -363,6 +425,22 @@ export class LineService {
             });
             if (intersectedLine) intersectedLine.visible = false;
         }
+    }
+
+    public rearrangeLines() {
+        let zLines: MyLine[] = [];
+        let yLines: MyLine[] = [];
+        let xLines: MyLine[] = [];
+        this.lines.forEach((line) => {
+            if (line.axis?.equals(new Vector3(0, 0, 1))) {
+                zLines.push(line);
+            } else if (line.axis?.equals(new Vector3(0, 1, 0))) {
+                yLines.push(line);
+            } else {
+                xLines.push(line);
+            }
+        });
+        this.lines = [...zLines, ...yLines, ...xLines];
     }
 
     public getLineByName(name: string): MyLine | undefined {

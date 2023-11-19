@@ -45,3 +45,23 @@
         &nbsp; : &nbsp;{{ this.scale }}
     </mat-button-toggle>
 </mat-button-toggle-group>
+<button
+    class="feature-button"
+    mat-stroked-button
+    (mousedown)="$event.stopPropagation()"
+    (mosemove)="$event.stopPropagation()"
+    (mouseup)="$event.stopPropagation()"
+    (click)="this.undoDraw()"
+>
+    <mat-icon>undo</mat-icon>
+</button>
+<button
+    class="feature-button"
+    mat-stroked-button
+    (mousedown)="$event.stopPropagation()"
+    (mosemove)="$event.stopPropagation()"
+    (mouseup)="$event.stopPropagation()"
+    (click)="this.redoDraw()"
+>
+    <mat-icon>redo</mat-icon>
+</button>

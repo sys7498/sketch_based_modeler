@@ -14,9 +14,7 @@ import { EventService } from '../event-service/event-service';
 export class BodyComponent {
     @ViewChild('mainView', { static: true }) mainView: ElementRef =
         undefined as unknown as ElementRef;
-    @ViewChild('topSubView', { static: true }) topSubView: ElementRef =
-        undefined as unknown as ElementRef;
-    @ViewChild('bottomSubView', { static: true }) bottomSubView: ElementRef =
+    @ViewChild('subView', { static: true }) subView: ElementRef =
         undefined as unknown as ElementRef;
     @ViewChild('background', { static: true }) background: ElementRef =
         undefined as unknown as ElementRef;
@@ -39,11 +37,14 @@ export class BodyComponent {
         let viewportDivs = {
             background: this.background.nativeElement,
             main: this.mainView.nativeElement,
-            topSub: this.topSubView.nativeElement,
-            bottomSub: this.bottomSubView.nativeElement,
+            subView: this.subView.nativeElement,
         };
         /* 서비스 중 뷰포트 div 요소가 필요한 부분을 초기화하고 UI의 초깃값을 일괄 */
         this._notification.notify(NIndex.createdViewportDiv, viewportDivs);
+    }
+
+    public isMouseInMain(isIn: boolean) {
+        this._notification.notify(NIndex.isMouseInMain, isIn);
     }
 
     public onChangeMenu() {

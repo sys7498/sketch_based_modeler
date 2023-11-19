@@ -28,11 +28,6 @@ export class CameraSet {
                 new Vector3(1500, -1500, 1500)
             ),
             orbitControls3d: undefined as unknown as OrbitControls,
-            cameraResult: this.createPerspectiveCamera(
-                'cameraResult',
-                new Vector3(1500, -1500, 1500)
-            ),
-            orbitControlsResult: undefined as unknown as OrbitControls,
         };
         this._viewportDivs = undefined as unknown as any;
         this._notifyHandler = new NotifyHandler(
@@ -72,36 +67,19 @@ export class CameraSet {
 
         this.cameraSets['orbitControls3d'] = new OrbitControls(
             this.cameraSets['camera3d'],
-            this._viewportDivs['topSub']
+            this._viewportDivs['subView']
         );
         this.cameraSets['orbitControls3d'].addEventListener('change', () => {
             console.log('orbitControls3d changed');
             this._notifyHandler.notify(NIndex.orbitControlsChanged);
         });
-
-        this.cameraSets['orbitControlsResult'] = new OrbitControls(
-            this.cameraSets['cameraResult'],
-            this._viewportDivs['bottomSub']
-        );
-        this.cameraSets['orbitControlsResult'].addEventListener(
-            'change',
-            () => {
-                console.log('orbitControlsResult changed');
-                this._notifyHandler.notify(NIndex.orbitControlsChanged);
-            }
-        );
     }
 
     public onWindowResize(): void {
         this.cameraSets['camera3d'].aspect =
-            this._viewportDivs['topSub'].clientWidth /
-            this._viewportDivs['topSub'].clientHeight;
+            this._viewportDivs['subView'].clientWidth /
+            this._viewportDivs['subView'].clientHeight;
         this.cameraSets['camera3d'].updateProjectionMatrix();
-
-        this.cameraSets['cameraResult'].aspect =
-            this._viewportDivs['bottomSub'].clientWidth /
-            this._viewportDivs['bottomSub'].clientHeight;
-        this.cameraSets['cameraResult'].updateProjectionMatrix();
 
         this.cameraSets['camera2d'].left =
             -this._viewportDivs['main'].clientWidth / 2;
@@ -117,8 +95,6 @@ export class CameraSet {
             this.cameraSets['orbitControls2d'].update();
         if (this.cameraSets['orbitControls3d'])
             this.cameraSets['orbitControls3d'].update();
-        if (this.cameraSets['orbitControlsResult'])
-            this.cameraSets['orbitControlsResult'].update();
     }
 
     private onNotify(nid: number, params: any, sender: any): void {

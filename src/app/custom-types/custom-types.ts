@@ -99,6 +99,4 @@ export interface cameraSets {
     orbitControls2d: OrbitControls;
     camera3d: PerspectiveCamera;
     orbitControls3d: OrbitControls;
-    cameraResult: PerspectiveCamera;
-    orbitControlsResult: OrbitControls;
 }

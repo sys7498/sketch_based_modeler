@@ -11,19 +11,11 @@ import { EventService } from '../event-service/event-service';
 import { Light } from './light/light';
 import { Grid } from './misc/grid/grid';
 import { Axes } from './misc/axes/axes';
-import {
-    Scene,
-    Group,
-    Color,
-    Vector3,
-    AxesHelper,
-    MeshBasicMaterial,
-} from 'three';
+import { Scene, Group, Color } from 'three';
 
 @Injectable({ providedIn: 'root' })
 export class SceneGraphService {
     public readonly scene3d: Scene;
-    public readonly sceneResult: Scene;
 
     public readonly cameraSet: CameraSet;
     public readonly renderer: Renderer;
@@ -40,10 +32,6 @@ export class SceneGraphService {
     public readonly light3d: Light;
     public readonly axes3d: Axes;
 
-    public readonly miscResult: Group;
-    public readonly lightResult: Light;
-    public readonly axesResult: Axes;
-
     constructor(
         private _event: EventService,
         private _notification: NotificationService
@@ -51,9 +39,7 @@ export class SceneGraphService {
         this.scene2d = new Scene();
         this.scene2d.background = new Color(0xffffff);
         this.scene3d = new Scene();
-        this.scene3d.background = new Color(0xd7d7d7);
-        this.sceneResult = new Scene();
-        this.sceneResult.background = new Color(0x7cacf8);
+        this.scene3d.background = new Color(0xd7d997);
 
         this.cameraSet = new CameraSet(this._event, this._notification);
         this.renderer = new Renderer(
@@ -81,13 +67,6 @@ export class SceneGraphService {
         this.misc3d.add(this.light3d.ambientLight);
         this.misc3d.add(this.axes3d.axes);
 
-        this.miscResult = new Group();
-        this.lightResult = new Light(this._notification, this);
-        this.axesResult = new Axes(this);
-        this.sceneResult.add(this.miscResult);
-        this.miscResult.add(this.lightResult.ambientLight);
-        this.miscResult.add(this.axesResult.axes);
-
         this._notifyHandler = new NotifyHandler(
             this._notification,
             this.onNotify.bind(this)
@@ -111,7 +90,6 @@ export class SceneGraphService {
         this.renderer.initialize(viewportDivs);
         this.cameraSet.cameraSets['orbitControls2d'].update();
         this.cameraSet.cameraSets['orbitControls3d'].update();
-        this.cameraSet.cameraSets['orbitControlsResult'].update();
         startAnimation(this);
     }
     private _notifyHandler: NotifyHandler;

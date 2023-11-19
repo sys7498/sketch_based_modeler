@@ -26,44 +26,37 @@
     margin-left: 5px;
 }
 
+#main-view {
+    width: 100%;
+    height: 100%;
+}
+
+.example-card {
+    width: 550px;
+    position: absolute;
+    left: 20px;
+    top: 60px;
+}
+
 .main {
-    float: left;
-    width: 70%; /* 80% of the total width for a ratio of 4:1 */
+    width: 100%; /* 80% of the total width for a ratio of 4:1 */
     height: 100%;
-}
-
-.sub {
-    float: left;
-    width: 30%; /* 20% of the total width for a ratio of 4:1 */
-    height: 100%;
-}
-
-.row-info {
     position: relative;
-    width: 100%;
-    height: 3.33%;
-    background-color: navy;
 }
 
-.row-1 {
-    position: relative;
-    width: 100%;
-    height: 20%;
+#feature {
+    position: absolute;
+    left: 0px;
+    top: 0px;
 }
 
-.row-2 {
-    position: relative;
+#sub-view {
     width: 100%;
-    height: 40%;
+    height: 300px;
 }
 
-.row-3 {
-    position: relative;
-    width: 100%;
-    height: 40%;
-}
-
-.element {
-    width: 100%;
-    height: 100%;
+#move-button {
+    background: gray;
+    width: 10px;
+    height: 10px;
 }

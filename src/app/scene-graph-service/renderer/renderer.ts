@@ -15,10 +15,8 @@ import { WebGLRenderer } from 'three';
 export interface Renderers {
     mainWebGL: WebGLRenderer;
     mainCss: CSS2DRenderer;
-    topSubWebGL: WebGLRenderer;
-    topSubCss: CSS2DRenderer;
-    bottomSubWebGL: WebGLRenderer;
-    bottomSubCss: CSS2DRenderer;
+    subViewWebGL: WebGLRenderer;
+    subViewCss: CSS2DRenderer;
 }
 
 export class Renderer {
@@ -34,10 +32,8 @@ export class Renderer {
         this.renderers = {
             mainWebGL: this.createWebGLRenderer(),
             mainCss: this.createCSS2DRenderer(),
-            topSubWebGL: this.createWebGLRenderer(),
-            topSubCss: this.createCSS2DRenderer(),
-            bottomSubWebGL: this.createWebGLRenderer(),
-            bottomSubCss: this.createCSS2DRenderer(),
+            subViewWebGL: this.createWebGLRenderer(),
+            subViewCss: this.createCSS2DRenderer(),
         };
         this.webGLRenderer = this.createWebGLRenderer();
         this.css2DRenderer = this.createCSS2DRenderer();
@@ -66,17 +62,11 @@ export class Renderer {
         this._viewportDivs['main'].appendChild(
             this.renderers['mainCss'].domElement
         );
-        this._viewportDivs['topSub'].appendChild(
-            this.renderers['topSubWebGL'].domElement
+        this._viewportDivs['subView'].appendChild(
+            this.renderers['subViewWebGL'].domElement
         );
-        this._viewportDivs['topSub'].appendChild(
-            this.renderers['topSubCss'].domElement
-        );
-        this._viewportDivs['bottomSub'].appendChild(
-            this.renderers['bottomSubWebGL'].domElement
-        );
-        this._viewportDivs['bottomSub'].appendChild(
-            this.renderers['bottomSubCss'].domElement
+        this._viewportDivs['subView'].appendChild(
+            this.renderers['subViewCss'].domElement
         );
         this.onWindowResize();
     }
@@ -94,26 +84,15 @@ export class Renderer {
             this._cameraSet.cameraSets['camera2d']
         );
 
-        this.renderers['topSubWebGL'].clear();
-        this.renderers['topSubWebGL'].render(
+        this.renderers['subViewWebGL'].clear();
+        this.renderers['subViewWebGL'].render(
             this._sceneGraph.scene3d,
             this._cameraSet.cameraSets['camera3d']
         );
-        this.renderers['topSubWebGL'].clearDepth();
-        this.renderers['topSubCss'].render(
+        this.renderers['subViewWebGL'].clearDepth();
+        this.renderers['subViewCss'].render(
             this._sceneGraph.scene3d,
             this._cameraSet.cameraSets['camera3d']
-        );
-
-        this.renderers['bottomSubWebGL'].clear();
-        this.renderers['bottomSubWebGL'].render(
-            this._sceneGraph.sceneResult,
-            this._cameraSet.cameraSets['cameraResult']
-        );
-        this.renderers['bottomSubWebGL'].clearDepth();
-        this.renderers['bottomSubCss'].render(
-            this._sceneGraph.sceneResult,
-            this._cameraSet.cameraSets['cameraResult']
         );
     }
 
@@ -132,21 +111,13 @@ export class Renderer {
             this._viewportDivs['main'].clientWidth,
             this._viewportDivs['main'].clientHeight
         );
-        this.renderers['topSubWebGL'].setSize(
-            this._viewportDivs['topSub'].clientWidth,
-            this._viewportDivs['topSub'].clientHeight
+        this.renderers['subViewWebGL'].setSize(
+            this._viewportDivs['subView'].clientWidth,
+            this._viewportDivs['subView'].clientHeight
         );
-        this.renderers['topSubCss'].setSize(
-            this._viewportDivs['topSub'].clientWidth,
-            this._viewportDivs['topSub'].clientHeight
-        );
-        this.renderers['bottomSubWebGL'].setSize(
-            this._viewportDivs['bottomSub'].clientWidth,
-            this._viewportDivs['bottomSub'].clientHeight
-        );
-        this.renderers['bottomSubCss'].setSize(
-            this._viewportDivs['bottomSub'].clientWidth,
-            this._viewportDivs['bottomSub'].clientHeight
+        this.renderers['subViewCss'].setSize(
+            this._viewportDivs['subView'].clientWidth,
+            this._viewportDivs['subView'].clientHeight
         );
     }
 
@@ -165,7 +136,7 @@ export class Renderer {
         const css2DRenderer = new CSS2DRenderer();
         css2DRenderer.domElement.style.touchAction = 'none';
         css2DRenderer.domElement.style.position = 'absolute';
-        css2DRenderer.domElement.style.top = '0';
+        css2DRenderer.domElement.style.top = '0px';
         return css2DRenderer;
     }
 

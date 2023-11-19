@@ -275,9 +275,9 @@ export class Converter {
     }
 
     public convertToCad() {
-        let id = 451463969;
-        let protoProjectId = '6543e093697478987b0ef125';
-        let projectName = '64e55ba4e32ef2a49bd7876a_1698947219420_sampleC';
+        let id = 437890790;
+        let protoProjectId = '6532467f8673f092c45445a4';
+        let projectName = '64e55ba4e32ef2a49bd7876a_1697793663556_sampleA0';
 
         let projectUploadURL = `https://proto.efsoft.kr/api/projects/${protoProjectId}`;
         let projectInitURL = `https://proto.efsoft.kr/cad-api/profile/${id}/init`;
@@ -294,6 +294,8 @@ export class Converter {
                 }).then((res) => {
                     if (res.ok) {
                         this.cadAddSegment(segmentAddURL, 0);
+
+                        //window.open('https://proto.efsoft.kr/editor');
                     }
                 });
             }
@@ -302,12 +304,26 @@ export class Converter {
 
     private cadAddSegment(segmentAddURL: string, index: number) {
         if (index === this._lineService.lines.length) {
-            console.log('asdf');
-            let id = 451463969;
-            let projectName = '64e55ba4e32ef2a49bd7876a_1698947219420_sampleC';
+            let protoProjectId = '6532467f8673f092c45445a4';
+            let id = 437890790;
+            let projectName = '64e55ba4e32ef2a49bd7876a_1697793663556_sampleA0';
             let projectSaveURL = `https://proto.efsoft.kr/cad-api/profile/${id}/storage?name=${projectName}`;
+            let projectUploadURL = `https://proto.efsoft.kr/api/projects/${protoProjectId}`;
             fetch(projectSaveURL, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            }).then((res) => {
+                if (res.ok) {
+                    fetch(projectSaveURL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                    }).then((res) => {
+                        fetch(projectUploadURL, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                        });
+                    });
+                }
             });
             return;
         }
@@ -340,8 +356,8 @@ export class Converter {
                     body: body !== undefined ? JSON.stringify(body) : body,
                 }).then((res) => {
                     if (res.ok) {
+                        console.log(line.name, line.axis, body);
                         this.cadAddSegment(segmentAddURL, ++index);
-                        console.log(line.name, body);
                     }
                 });
             }
@@ -360,6 +376,7 @@ export class Converter {
                 this._variables[2][point.order].value
             );
         });
+        this._lineService.rearrangeLines();
     }
 
     private findValues() {
