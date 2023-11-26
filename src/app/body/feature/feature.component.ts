@@ -18,8 +18,17 @@ export class FeatureComponent {
         private _sceneGraph: SceneGraphService,
         private _lineService: LineService
     ) {}
+    public onClickUndoDraw() {
+        this._lineService.undoHistory();
+    }
+
+    public onClickRedoDraw() {
+        this._lineService.redoHistory();
+    }
     public onClickConvert() {
-        this._lineService.converter.convertTo3D();
+        if (confirm('3D로 변환하시겠습니까?')) {
+            this._lineService.converter.convertTo3D();
+        }
     }
     public onClickConvertCad() {
         this._lineService.converter.convertToCad();

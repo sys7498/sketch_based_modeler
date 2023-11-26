@@ -39,7 +39,7 @@ export class SceneGraphService {
         this.scene2d = new Scene();
         this.scene2d.background = new Color(0xffffff);
         this.scene3d = new Scene();
-        this.scene3d.background = new Color(0xd7d997);
+        this.scene3d.background = new Color(0xffffff);
 
         this.cameraSet = new CameraSet(this._event, this._notification);
         this.renderer = new Renderer(
@@ -56,7 +56,7 @@ export class SceneGraphService {
         this.scene2d.add(this.lines);
         this.scene2d.add(this.misc);
         this.misc.add(this.light.ambientLight);
-        this.misc.add(this.axes.axes);
+        //this.misc.add(this.axes.axes);
 
         this.convertedLines = new Group();
         this.misc3d = new Group();

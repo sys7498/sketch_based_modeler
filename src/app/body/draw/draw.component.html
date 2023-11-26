@@ -1,3 +1,17 @@
+<mat-chip-listbox aria-label="drawModeSelection">
+    <mat-chip-option
+        selected
+        (click)="this.changeMode('straight')"
+        [selectable]="this.nowMode !== 'straight'"
+        >펜</mat-chip-option
+    >
+    <mat-chip-option
+        (click)="this.changeMode('erase')"
+        [selectable]="this.nowMode !== 'erase'"
+        >지우개</mat-chip-option
+    >
+</mat-chip-listbox>
+<!--
 <mat-button-toggle-group value="straight" id="toggle">
     <mat-button-toggle
         value="straight"
@@ -7,15 +21,6 @@
         (click)="this.changeMode('straight')"
     >
         직선
-    </mat-button-toggle>
-    <mat-button-toggle
-        value="free"
-        (mousedown)="$event.stopPropagation()"
-        (mosemove)="$event.stopPropagation()"
-        (mouseup)="$event.stopPropagation()"
-        (click)="this.changeMode('free')"
-    >
-        자유
     </mat-button-toggle>
     <mat-button-toggle
         value="erase"
@@ -65,3 +70,4 @@
 >
     <mat-icon>redo</mat-icon>
 </button>
+-->

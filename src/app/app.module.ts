@@ -11,6 +11,8 @@ import { FeatureComponent } from './body/feature/feature.component';
 import { MatGridListModule } from '@angular/material/grid-list';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatChipsModule } from '@angular/material/chips';
 @NgModule({
     declarations: [
         AppComponent,
@@ -26,6 +28,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
         MatGridListModule,
         MatCardModule,
         MatProgressBarModule,
+        MatToolbarModule,
+        MatChipsModule,
     ],
     providers: [],
     bootstrap: [AppComponent],

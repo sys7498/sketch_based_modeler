@@ -8,6 +8,7 @@ import {
     MeshBasicMaterial,
     OrthographicCamera,
     PerspectiveCamera,
+    Object3D,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer';
@@ -16,9 +17,9 @@ export class MyLine extends Line {
     public axis: Vector3 | null;
     public order: number;
     public points: Vector3[];
-    public myPoints: MyPoint[];
+    public myPointsName: string[];
     public a: number;
-    public connectedEdgeLines: any[];
+    public connectedEdgeLines: ConnectedEdgeLine[];
     public label: CSS2DObject | null;
     public convertedLength: number;
     constructor(order: number, startPoint: Vector3) {
@@ -30,7 +31,7 @@ export class MyLine extends Line {
         this.order = order;
         this.name = `line_${order}`;
         this.points = [startPoint];
-        this.myPoints = [];
+        this.myPointsName = [];
         this.a = 0;
         this.connectedEdgeLines = [];
         this.label = null;
@@ -78,9 +79,15 @@ export class MyPoint extends Mesh {
 }
 
 export interface PointConnectedLine {
-    line: MyLine;
+    lineName: string;
     pos: 'start' | 'end' | 'edge';
-    point: MyPoint | Vector3; // MyPoint가 없다면 위치라도 저장해둬야함.
+    pointName: string | Vector3; // MyPoint가 없다면 위치라도 저장해둬야함.
+}
+
+export interface ConnectedEdgeLine {
+    lineName: string;
+    position: Vector3;
+    pointName: string | null;
 }
 
 export interface variable {

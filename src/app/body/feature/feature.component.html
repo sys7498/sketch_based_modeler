@@ -1,31 +1,31 @@
-<!--
-<button
-    class="feature-button"
-    mat-stroked-button
-    (mousedown)="$event.stopPropagation()"
-    (mosemove)="$event.stopPropagation()"
-    (mouseup)="$event.stopPropagation()"
-    (click)="this.onShowDirections()"
->
-    방향보여주기
-</button>-->
-<button
-    class="feature-button"
-    mat-stroked-button
-    (mousedown)="$event.stopPropagation()"
-    (mosemove)="$event.stopPropagation()"
-    (mouseup)="$event.stopPropagation()"
-    (click)="this.onClickConvert()"
->
-    구조물 변환
-</button>
-<button
-    class="feature-button"
-    mat-stroked-button
-    (mousedown)="$event.stopPropagation()"
-    (mosemove)="$event.stopPropagation()"
-    (mouseup)="$event.stopPropagation()"
-    (click)="this.onClickConvertCad()"
->
-    알루미늄 구조물 변환
-</button>
+<div style="display: flex">
+    <div>
+        <button
+            mat-icon-button
+            (mousedown)="$event.stopPropagation()"
+            (mosemove)="$event.stopPropagation()"
+            (mouseup)="$event.stopPropagation()"
+            (click)="this.onClickUndoDraw()"
+        >
+            <mat-icon>undo</mat-icon>
+        </button>
+        <button
+            mat-icon-button
+            (mousedown)="$event.stopPropagation()"
+            (mosemove)="$event.stopPropagation()"
+            (mouseup)="$event.stopPropagation()"
+            (click)="this.onClickRedoDraw()"
+        >
+            <mat-icon>redo</mat-icon>
+        </button>
+        <button
+            mat-icon-button
+            (mousedown)="$event.stopPropagation()"
+            (mosemove)="$event.stopPropagation()"
+            (mouseup)="$event.stopPropagation()"
+            (click)="this.onClickConvert()"
+        >
+            <mat-icon>3d_rotation</mat-icon>
+        </button>
+    </div>
+</div>

@@ -40,7 +40,10 @@ export class LineService {
     private _isStartSnaped: boolean;
     private _isEndSnaped: boolean;
     private _lastSnappedObject: MyLine | MyPoint | null;
-    private _history: { [key: string]: any }[];
+    /*private _history: { [key: string]: any }[];
+    private _historyPointer: number;*/
+
+    private _history: { [key: string]: string[] }[];
     private _historyPointer: number;
     private _eventHandler: EventHandler;
     private _notifyHandler: NotifyHandler;
@@ -133,9 +136,9 @@ export class LineService {
                 this.lines[
                     this._lastSnappedObject.order
                 ].connectedEdgeLines.push({
-                    line: this.lines[this.lines.length - 1],
+                    lineName: this.lines[this.lines.length - 1].name,
                     position: this._lastLinePoint.clone(),
-                    point: null,
+                    pointName: null,
                 });
             }
         }
@@ -165,9 +168,9 @@ export class LineService {
                 this.lines[
                     this._lastSnappedObject.order
                 ].connectedEdgeLines.push({
-                    line: this.lines[this.lines.length - 1],
+                    lineName: this.lines[this.lines.length - 1].name,
                     position: this._lastLinePoint.clone(),
-                    point: null,
+                    pointName: null,
                 });
             }
         }
@@ -175,55 +178,115 @@ export class LineService {
         this.registerHistory();
     }
 
+    public removeLine(line: MyLine) {
+        line.removeFromParent();
+    }
+
     public registerHistory() {
         let newHistory = {
-            lines: [...this.lines],
-            points: [...this.points],
+            lines: this.lines.map((line) => line.name),
+            points: this.points.map((point) => point.name),
         };
         if (this._historyPointer < this._history.length - 1) {
             this._history.splice(this._historyPointer + 1);
         }
         this._history.push(newHistory);
         this._historyPointer++;
-        console.log(this._history);
     }
 
     public undoHistory() {
         if (this._historyPointer <= 0) return;
-        this.removeMyObjects();
         this._historyPointer--;
-        this.lines = [...this._history[this._historyPointer]['lines']];
-        this.lines.forEach((line) => {
-            this._sceneGraph.lines.add(line);
+
+        /** 없애야할 라인 검색 후 없애기 */
+        const resultLineState = this._history[this._historyPointer]['lines'];
+        const nowLineState = this._history[this._historyPointer + 1]['lines'];
+        const toRemovedLines = nowLineState.filter(
+            (x) => !resultLineState.includes(x)
+        );
+        toRemovedLines.forEach((name) => {
+            this.getLineByName(name)!.removeFromParent();
+            this.getLineByName(name)!.label?.element.remove();
         });
-        this.points = [...this._history[this._historyPointer]['points']];
-        this.points.forEach((point) => {
-            this._sceneGraph.lines.add(point);
+
+        /** 없애야할 포인트 검색 후 없애기 */
+        const resultPointState = this._history[this._historyPointer]['points'];
+        const nowPointState = this._history[this._historyPointer + 1]['points'];
+        const toRemovedPoints = nowPointState.filter(
+            (x) => !resultPointState.includes(x)
+        );
+        toRemovedPoints.forEach((name) => {
+            this.getPointByName(name)!.removeFromParent();
         });
-        console.log(this._history);
     }
 
-    public redoHIstory() {
+    public redoHistory() {
         if (this._historyPointer >= this._history.length - 1) return;
-        this.removeMyObjects();
         this._historyPointer++;
-        this.lines = [...this._history[this._historyPointer]['lines']];
-        this.lines.forEach((line) => {
-            this._sceneGraph.lines.add(line);
+
+        /** 없애야할 라인 검색 후 없애기 */
+        const resultLineState = this._history[this._historyPointer]['lines'];
+        const nowLineState = this._history[this._historyPointer - 1]['lines'];
+        const toAddedLines = resultLineState.filter(
+            (x) => !nowLineState.includes(x)
+        );
+        toAddedLines.forEach((name) => {
+            this._sceneGraph.lines.add(this.getLineByName(name)!);
         });
-        this.points = [...this._history[this._historyPointer]['points']];
-        this.points.forEach((point) => {
-            this._sceneGraph.lines.add(point);
+
+        /** 없애야할 포인트 검색 후 없애기 */
+        const resultPointState = this._history[this._historyPointer]['points'];
+        const nowPointState = this._history[this._historyPointer - 1]['points'];
+        const toAddedPoints = resultPointState.filter(
+            (x) => !nowPointState.includes(x)
+        );
+        toAddedPoints.forEach((name) => {
+            this._sceneGraph.lines.add(this.getPointByName(name)!);
         });
-        console.log(this._history);
     }
+
+    // history 기능에 대해 오류
+    /**
+    public updateNullObject() {
+        this.lines.forEach((line) => {
+            line.connectedEdgeLines.forEach((edgeLine) => {
+                if (edgeLine.point instanceof MyLine) {
+                    if (edgeLine.point.parent === null) {
+                        edgeLine.point = this.getPointByName(
+                            edgeLine.point.name
+                        );
+                    }
+                }
+            });
+        });
+        this.points.forEach((point) => {
+            point.connectedLines.forEach((connectedLine) => {
+                if (connectedLine.point instanceof MyPoint) {
+                    if (connectedLine.point.parent === null) {
+                        console.log(connectedLine.point);
+                        connectedLine.point = this.getPointByName(
+                            connectedLine.point.name
+                        )!;
+                    }
+                }
+                if (connectedLine.line instanceof MyLine) {
+                    if (connectedLine.line.parent === null) {
+                        console.log(connectedLine.line);
+                        connectedLine.line = this.getLineByName(
+                            connectedLine.line.name
+                        )!;
+                    }
+                }
+            });
+        });
+    }*/
 
     public removeMyObjects() {
         this.lines.forEach((line) => {
-            this._sceneGraph.lines.remove(line);
+            line.removeFromParent();
         });
         this.points.forEach((point) => {
-            this._sceneGraph.lines.remove(point);
+            point.removeFromParent();
         });
         this.lines = [];
         this.points = [];
@@ -235,20 +298,25 @@ export class LineService {
                 return p.position.equals(point);
             });
             if (foundPoint !== undefined) {
-                line.myPoints.push(foundPoint);
+                line.myPointsName.push(foundPoint.name);
             } else {
                 let newPoint = new MyPoint(this.points.length);
                 newPoint.position.copy(point);
                 newPoint.makeLabel();
                 this._sceneGraph.lines.add(newPoint);
                 this.points.push(newPoint);
-                line.myPoints.push(this.points[this.points.length - 1]);
+                line.myPointsName.push(
+                    this.points[this.points.length - 1].name
+                );
             }
         });
-        line.myPoints.forEach((point, index) => {
+        let points = line.myPointsName.map(
+            (name) => this.getPointByName(name)!
+        );
+        points.forEach((point, index) => {
             point.connectedLines.push({
-                point: line.myPoints[index === 0 ? 1 : 0],
-                line: line,
+                pointName: line.myPointsName[index === 0 ? 1 : 0],
+                lineName: line.name,
                 pos: index === 0 ? 'end' : 'start',
             });
         });
@@ -386,11 +454,15 @@ export class LineService {
         /** edge 연결된 포인트 myPoint 대응시켜주기 */
         this.lines.forEach((line) => {
             line.connectedEdgeLines.forEach((edgeLine) => {
-                edgeLine.line.myPoints.forEach((myPoint: MyPoint) => {
+                const edgeLinePoints = this.getLineByName(
+                    edgeLine.lineName
+                )!.myPointsName.map((name) => this.getPointByName(name)!);
+
+                edgeLinePoints.forEach((myPoint) => {
                     if (myPoint.position.equals(edgeLine.position)) {
                         let newData: PointConnectedLine = {
-                            point: myPoint.position.clone(),
-                            line: line,
+                            pointName: myPoint.position.clone(),
+                            lineName: line.name,
                             pos: 'edge',
                         };
                         if (
@@ -399,7 +471,7 @@ export class LineService {
                             }) === undefined
                         ) {
                             myPoint.connectedLines.unshift(newData);
-                            edgeLine.point = myPoint;
+                            edgeLine.pointName = myPoint.name;
                         }
                     }
                 });
@@ -445,6 +517,10 @@ export class LineService {
 
     public getLineByName(name: string): MyLine | undefined {
         return this.lines.find((line) => line.name === name);
+    }
+
+    public getPointByName(name: string): MyPoint | undefined {
+        return this.points.find((line) => line.name === name);
     }
 }
 

@@ -1,3 +1,10 @@
+<mat-toolbar class="header">
+    <span class="header-item-container"> Sketch Modeler </span>
+    <span class="header-item-container"> <app-draw></app-draw> </span>
+    <span class="header-item-container">
+        <app-feature></app-feature>
+    </span>
+</mat-toolbar>
 <div id="container">
     <div #background id="background">
         <div class="main">
@@ -7,9 +14,6 @@
                 (mouseover)="isMouseInMain(true)"
                 (mouseout)="isMouseInMain(false)"
             ></div>
-            <div id="feature">
-                <app-draw></app-draw><app-feature></app-feature>
-            </div>
             <div class="example-card">
                 <mat-card>
                     <mat-card-content>

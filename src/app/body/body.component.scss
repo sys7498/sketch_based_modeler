@@ -1,3 +1,5 @@
+$header-height: 40px;
+
 #background {
     width: 100%;
     height: 100%;
@@ -6,7 +8,7 @@
 #container {
     position: relative;
     width: 100%;
-    height: 100%;
+    height: calc(100% - 2 * $header-height);
     user-select: none;
 }
 
@@ -35,11 +37,11 @@
     width: 550px;
     position: absolute;
     left: 20px;
-    top: 60px;
+    top: 20px;
 }
 
 .main {
-    width: 100%; /* 80% of the total width for a ratio of 4:1 */
+    width: 100%;
     height: 100%;
     position: relative;
 }
@@ -59,4 +61,16 @@
     background: gray;
     width: 10px;
     height: 10px;
+}
+
+.header {
+    display: flex;
+    background-color: #3c3c3c;
+    height: $header-height;
+}
+
+.header-item-container {
+    color: white;
+    margin-left: 10px;
+    margin-right: 10px;
 }

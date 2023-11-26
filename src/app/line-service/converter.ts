@@ -8,6 +8,7 @@ import {
     BufferGeometry,
     Line,
     LineBasicMaterial,
+    Clock,
 } from 'three';
 import {
     MyLine,
@@ -181,9 +182,9 @@ export class Converter {
                         line.points[0] = line.points[1].clone();
                         line.points[1] = tempPoint.clone();
 
-                        let tempMyPoint = line.myPoints[0];
-                        line.myPoints[0] = line.myPoints[1];
-                        line.myPoints[1] = tempMyPoint;
+                        let tempMyPoint = line.myPointsName[0];
+                        line.myPointsName[0] = line.myPointsName[1];
+                        line.myPointsName[1] = tempMyPoint;
                     }
                 } else if (line.axis?.equals(new Vector3(0, 1, 0))) {
                     if (line.points[0].x > line.points[1].x) {
@@ -191,9 +192,9 @@ export class Converter {
                         line.points[0] = line.points[1].clone();
                         line.points[1] = temp.clone();
 
-                        let tempMyPoint = line.myPoints[0];
-                        line.myPoints[0] = line.myPoints[1];
-                        line.myPoints[1] = tempMyPoint;
+                        let tempMyPoint = line.myPointsName[0];
+                        line.myPointsName[0] = line.myPointsName[1];
+                        line.myPointsName[1] = tempMyPoint;
                     }
                 } else {
                     if (line.points[0].x > line.points[1].x) {
@@ -201,25 +202,32 @@ export class Converter {
                         line.points[0] = line.points[1].clone();
                         line.points[1] = temp.clone();
 
-                        let tempMyPoint = line.myPoints[0];
-                        line.myPoints[0] = line.myPoints[1];
-                        line.myPoints[1] = tempMyPoint;
+                        let tempMyPoint = line.myPointsName[0];
+                        line.myPointsName[0] = line.myPointsName[1];
+                        line.myPointsName[1] = tempMyPoint;
                     }
                 }
 
-                let point0 = line.myPoints[0].connectedLines.find(
-                    (connectedPoint) => connectedPoint.line === line
-                );
+                let point0 = this._lineService
+                    .getPointByName(line.myPointsName[0])!
+                    .connectedLines.find(
+                        (connectedPoint) =>
+                            connectedPoint.lineName === line.name
+                    );
                 if (point0 !== undefined) {
                     if (point0.pos === 'end') point0.pos = 'start';
                 }
-                let point1 = line.myPoints[1].connectedLines.find(
-                    (connectedPoint) => connectedPoint.line === line
-                );
+                let point1 = this._lineService
+                    .getPointByName(line.myPointsName[1])!
+                    .connectedLines.find(
+                        (connectedPoint) =>
+                            connectedPoint.lineName === line.name
+                    );
                 if (point1 !== undefined) {
                     if (point1.pos === 'start') point1.pos = 'end';
                 }
 
+                /*
                 let lineDirArrow = new ArrowHelper(
                     line.myPoints[1].position
                         .clone()
@@ -230,6 +238,7 @@ export class Converter {
                     0xff0ff0
                 );
                 this._sceneGraphService.misc.add(lineDirArrow);
+                */
             }
         }
     }
@@ -257,56 +266,91 @@ export class Converter {
     }
 
     public convertTo3D() {
+        let clock = new Clock();
+        clock.start();
         this.clustering();
+        //this._lineService.lines.forEach((line) => {
+        //    if (line.points.length == 2) {
+        //        let startToEndV = this.absVector3(
+        //            line.points[1]
+        //                .clone()
+        //                .sub(line.points[0].clone())
+        //                .normalize()
+        //        );
+        //
+        //        let dp = new Mesh(
+        //            new SphereGeometry(0.01),
+        //            new MeshBasicMaterial({ color: 0xff0000 })
+        //        );
+        //        dp.position.copy(startToEndV.clone());
+        //        this._sceneGraphService.misc.add(dp);
+        //    }
+        //});
         this.setVariables();
         this.setEquations();
         this.findValues();
         console.log('result', this._variables);
         this.setConvertedPosition();
+        console.log(clock.getElapsedTime());
         this._lineService.lines.forEach((line) => {
-            let nlG = new BufferGeometry().setFromPoints(
-                line.myPoints.map((myPoint) =>
-                    myPoint.convertedPosition!.clone()
-                )
-            );
-            let nl = new Line(nlG, new LineBasicMaterial({ color: 0x000000 }));
-            this._sceneGraphService.convertedLines.add(nl);
+            if (line.parent !== null) {
+                let nlG = new BufferGeometry().setFromPoints(
+                    line.myPointsName.map((myPointName) =>
+                        this._lineService
+                            .getPointByName(myPointName)!
+                            .convertedPosition!.clone()
+                    )
+                );
+                let nl = new Line(
+                    nlG,
+                    new LineBasicMaterial({ color: 0x000000 })
+                );
+                this._sceneGraphService.convertedLines.add(nl);
+            }
         });
+        this.convertToCad();
     }
 
     public convertToCad() {
-        let id = 437890790;
-        let protoProjectId = '6532467f8673f092c45445a4';
-        let projectName = '64e55ba4e32ef2a49bd7876a_1697793663556_sampleA0';
+        let id = 160816257;
+        let protoProjectId = '6562fb12265d34ef06018822';
+        let projectName = '64e55ba4e32ef2a49bd7876a_1700985618476_sampleF';
 
         let projectUploadURL = `https://proto.efsoft.kr/api/projects/${protoProjectId}`;
         let projectInitURL = `https://proto.efsoft.kr/cad-api/profile/${id}/init`;
         let segmentAddURL = `https://proto.efsoft.kr/cad-api/profile/${id}/segment`;
-
-        /** cad서버에 업로드 우선 */
-        fetch(projectUploadURL, {
-            method: 'GET',
+        fetch(projectInitURL, {
             headers: { 'Content-Type': 'application/json' },
         }).then((res) => {
             if (res.ok) {
-                fetch(projectInitURL, {
-                    headers: { 'Content-Type': 'application/json' },
-                }).then((res) => {
-                    if (res.ok) {
-                        this.cadAddSegment(segmentAddURL, 0);
-
-                        //window.open('https://proto.efsoft.kr/editor');
-                    }
-                });
+                this.cadAddSegment(segmentAddURL, 0);
+                //window.open('https://proto.efsoft.kr/editor');
             }
         });
+        ///** cad서버에 업로드 우선 */
+        //fetch(projectUploadURL, {
+        //    method: 'GET',
+        //    headers: { 'Content-Type': 'application/json' },
+        //}).then((res) => {
+        //    if (res.ok) {
+        //        fetch(projectInitURL, {
+        //            headers: { 'Content-Type': 'application/json' },
+        //        }).then((res) => {
+        //            if (res.ok) {
+        //                this.cadAddSegment(segmentAddURL, 0);
+        //
+        //                //window.open('https://proto.efsoft.kr/editor');
+        //            }
+        //        });
+        //    }
+        //});
     }
 
     private cadAddSegment(segmentAddURL: string, index: number) {
         if (index === this._lineService.lines.length) {
-            let protoProjectId = '6532467f8673f092c45445a4';
-            let id = 437890790;
-            let projectName = '64e55ba4e32ef2a49bd7876a_1697793663556_sampleA0';
+            let protoProjectId = '6562fb12265d34ef06018822';
+            let id = 160816257;
+            let projectName = '64e55ba4e32ef2a49bd7876a_1700985618476_sampleF';
             let projectSaveURL = `https://proto.efsoft.kr/cad-api/profile/${id}/storage?name=${projectName}`;
             let projectUploadURL = `https://proto.efsoft.kr/api/projects/${protoProjectId}`;
             fetch(projectSaveURL, {
@@ -329,18 +373,28 @@ export class Converter {
         }
 
         let line = this._lineService.lines[index];
-        if (line.myPoints[0] === undefined || line.myPoints[1] === undefined) {
+        if (
+            this._lineService.getPointByName(line.myPointsName[0]) ===
+                undefined ||
+            this._lineService.getPointByName(line.myPointsName[1]) === undefined
+        ) {
             console.log('undefined myPoints');
         } else {
             if (
-                line.myPoints[0].convertedPosition === undefined ||
-                line.myPoints[1].convertedPosition === undefined
+                this._lineService.getPointByName(line.myPointsName[0])!
+                    .convertedPosition === undefined ||
+                this._lineService.getPointByName(line.myPointsName[1])!
+                    .convertedPosition === undefined
             ) {
                 console.log(line.name, 'undefined converted position');
             } else {
-                let start = line.myPoints[0].convertedPosition?.clone();
+                let start = this._lineService
+                    .getPointByName(line.myPointsName[0])!
+                    .convertedPosition?.clone();
                 start!.add(line.axis!.clone().multiplyScalar(20));
-                let end = line.myPoints[1].convertedPosition?.clone();
+                let end = this._lineService
+                    .getPointByName(line.myPointsName[1])!
+                    .convertedPosition?.clone();
                 end!.sub(line.axis!.clone().multiplyScalar(20));
                 let body = {
                     point0: (start as Vector3).toArray(),
@@ -489,7 +543,10 @@ export class Converter {
                                         }
                                     );
                                 if (checkConnectedLine !== undefined) {
-                                    let baseLine = checkConnectedLine.line;
+                                    let baseLine =
+                                        this._lineService.getLineByName(
+                                            checkConnectedLine.lineName
+                                        )!;
                                     console.log(
                                         'new t: ',
                                         this.getRatioT(baseLine, targetPoint)
@@ -609,8 +666,12 @@ export class Converter {
         if (basePoint.connectedLines.length > 0) {
             basePoint.connectedLines.forEach((connectedLine) => {
                 if (connectedLine.pos !== 'edge') {
-                    let targetLine = connectedLine.line;
-                    let targetPoint = connectedLine.point as MyPoint;
+                    let targetLine = this._lineService.getLineByName(
+                        connectedLine.lineName
+                    )!;
+                    let targetPoint = this._lineService.getPointByName(
+                        connectedLine.pointName as string
+                    )!;
                     let targetLineAxisNumber = targetLine
                         .axis!.toArray()
                         .indexOf(1);
@@ -655,17 +716,24 @@ export class Converter {
                         }
                     }
                 } else {
-                    let baseLine = connectedLine.line;
-                    let targetPoint =
-                        connectedLine.line.connectedEdgeLines.find(
+                    let baseLine = this._lineService.getLineByName(
+                        connectedLine.lineName
+                    )!;
+                    let targetPoint = this._lineService.getPointByName(
+                        baseLine.connectedEdgeLines.find(
                             (connectedEdgeLine) => {
                                 return connectedEdgeLine.position.equals(
-                                    connectedLine.point as Vector3
+                                    connectedLine.pointName as Vector3
                                 );
                             }
-                        )!.point as MyPoint;
-                    let baseLinePoint0 = baseLine.myPoints[0];
-                    let baseLinePoint1 = baseLine.myPoints[1];
+                        )!.pointName as string
+                    )!;
+                    let baseLinePoint0 = this._lineService.getPointByName(
+                        baseLine.myPointsName[0]
+                    )!;
+                    let baseLinePoint1 = this._lineService.getPointByName(
+                        baseLine.myPointsName[1]
+                    )!;
                     let baseLineAxisNumber = baseLine
                         .axis!.toArray()
                         .indexOf(1);
@@ -746,7 +814,9 @@ export class Converter {
         let newEquation: equation;
         newEquation = {
             equation: 'getLength',
-            parameters: [line.myPoints[0].order, line.myPoints[1].order],
+            parameters: line.myPointsName.map((myPointName) => {
+                this._lineService.getPointByName(myPointName)!.order;
+            }),
         };
 
         this._variables[4][line.order].equations.push(newEquation);
@@ -864,8 +934,12 @@ export class Converter {
     }
 
     private getRatioT(baseLine: MyLine, targetPoint: MyPoint) {
-        let baseLinePoint0 = baseLine.myPoints[0];
-        let baseLinePoint1 = baseLine.myPoints[1];
+        let baseLinePoint0 = this._lineService.getPointByName(
+            baseLine.myPointsName[0]
+        )!;
+        let baseLinePoint1 = this._lineService.getPointByName(
+            baseLine.myPointsName[1]
+        )!;
         let baseLineAxisNumber = baseLine.axis!.toArray().indexOf(1);
         let baseLineLength = baseLinePoint0.position.distanceTo(
             baseLinePoint1.position
@@ -877,12 +951,17 @@ export class Converter {
     }
 
     private getRatioLength(line: MyLine) {
-        let targetLength2d = line.myPoints[0].position.distanceTo(
-            line.myPoints[1].position
-        );
-        let baseLength2d =
-            this._lineService.lines[0].myPoints[0].position.distanceTo(
-                this._lineService.lines[0].myPoints[1].position
+        let targetLength2d = this._lineService
+            .getPointByName(line.myPointsName[0])!
+            .position.distanceTo(
+                this._lineService.getPointByName(line.myPointsName[1])!.position
+            );
+        let baseLength2d = this._lineService
+            .getPointByName(this._lineService.lines[0].myPointsName[0])!
+            .position.distanceTo(
+                this._lineService.getPointByName(
+                    this._lineService.lines[0].myPointsName[1]
+                )!.position
             );
         let ratio = math.round(targetLength2d / baseLength2d, 1);
         let ratioLength = ratio * this._myConstant.LINELENGTH;

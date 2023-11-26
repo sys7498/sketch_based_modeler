@@ -106,7 +106,6 @@ export class DrawComponent {
                 break;
             }
             case NIndex.isMouseInMain: {
-                console.log('asdfasd');
                 this.isMouseInMain = params as boolean;
                 break;
             }
@@ -231,13 +230,5 @@ export class DrawComponent {
         } else if (mode === 'free') {
         } else {
         }
-    }
-
-    public undoDraw() {
-        this._lineService.undoHistory();
-    }
-
-    public redoDraw() {
-        this._lineService.redoHIstory();
     }
 }
