@@ -348,11 +348,11 @@ export class Converter {
 
     private cadAddSegment(segmentAddURL: string, index: number) {
         if (index === this._lineService.lines.length) {
-            let protoProjectId = '6562fb12265d34ef06018822';
+            let protoProjectId = '';
             let id = 160816257;
-            let projectName = '64e55ba4e32ef2a49bd7876a_1700985618476_sampleF';
-            let projectSaveURL = `https://proto.efsoft.kr/cad-api/profile/${id}/storage?name=${projectName}`;
-            let projectUploadURL = `https://proto.efsoft.kr/api/projects/${protoProjectId}`;
+            let projectName = '';
+            let projectSaveURL = ``;
+            let projectUploadURL = ``;
             fetch(projectSaveURL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
